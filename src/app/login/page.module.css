@@ -1,0 +1,34 @@
+.container {
+  width: 100%;
+  height: 100%;
+  background: url("https://www.popsci.com/wp-content/uploads/2024/04/26/fof-1.0-0856_inline-1.jpg?quality=85") no-repeat center/cover;
+}
+
+.signInCard {
+  width: 33.75rem;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 0.3125rem 0.9375rem !important;
+}
+
+.signInCardHeader {
+  padding-top: 3rem;
+  padding-left: 4.25rem;
+  padding-right: 4.25rem;
+}
+
+.signInCardBody {
+  padding-left: 4.25rem;
+  padding-right: 4.25rem;
+}
+
+.signInCardFooter {
+  padding-left: 4.25rem;
+  padding-right: 4.25rem;
+  padding-bottom: 3rem;
+}
+
+.signInButton {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  height: auto;
+  width: 100%;
+}

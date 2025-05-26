@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import StoreProvider from "./StoreProvider";
+import AuthGuard from "./AuthGuard";
+import { Provider } from "@/components/ui/provider";
+import Head from "next/head";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,9 +27,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <Head>
+        <link rel="preload" href="https://www.popsci.com/wp-content/uploads/2024/04/26/fof-1.0-0856_inline-1.jpg?quality=85" as="image" />
+      </Head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+        <Provider>
+          <StoreProvider>
+            <AuthGuard>
+              {children}
+            </AuthGuard>
+          </StoreProvider>
+        </Provider>
       </body>
     </html>
   );
