@@ -5,6 +5,8 @@ import StoreProvider from "./StoreProvider";
 import AuthGuard from "./AuthGuard";
 import { Provider } from "@/components/ui/provider";
 import Head from "next/head";
+import { Theme } from "@chakra-ui/react";
+import { Toaster } from "@/components/ui/toaster";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +37,10 @@ export default function RootLayout({
         <Provider>
           <StoreProvider>
             <AuthGuard>
-              {children}
+              <Theme h="100vh" w="100vw" colorPalette="teal">
+                {children}
+                <Toaster />
+              </Theme>
             </AuthGuard>
           </StoreProvider>
         </Provider>
