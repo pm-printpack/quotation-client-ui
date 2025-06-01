@@ -456,7 +456,13 @@ export default function Home() {
         </TabsList>
       </TabsRoot>
       <Flex w="full" h="full" gap="4" marginTop="0.5rem">
-        <VStack align="flex-start" flex="1" gap="4" as="form" onSubmit={handleSubmit(onSubmit)}>
+        <VStack
+          align="flex-start"
+          flex="1"
+          gap="4"
+          as="form"
+          onSubmit={handleSubmit(onSubmit)}
+        >
           <VStack
             w="full"
             gap="4"
@@ -531,7 +537,7 @@ export default function Home() {
                     position="relative"
                     bg="bg.emphasized"
                     css={{ "--field-label-width": "8.625rem" }}
-                    data-state="open" 
+                    data-state="open"
                     _open={{
                       animationName: "fade-in, scale-in",
                       animationDuration: "300ms"
@@ -676,13 +682,25 @@ export default function Home() {
         {
           (formValues?.cases?.length && formValues?.width && formValues?.height)
           ?
-          <VStack alignItems="flex-start">
+          <VStack
+            alignItems="flex-start"
+            w="25rem"
+            data-state="open"
+            _open={{
+              animationName: "fade-in, scale-in",
+              animationDuration: "300ms"
+            }}
+            _closed={{
+              animationName: "fade-out, scale-out",
+              animationDuration: "120ms"
+            }}
+          >
             <Box bg="bg.muted" w="full" p="2" borderTopLeftRadius="0.25rem" borderTopRightRadius="0.25rem">
               <Heading size="md">Quotation Details for</Heading>
               <Text>
                 <Span textTransform="capitalize">{printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name}</Span> of <Span textTransform="capitalize">{`${productSubcategories.find(({id}) => id === selectedProductSubcategoryId)?.name}s`}</Span></Text>
             </Box>
-            <AccordionRoot multiple w="25rem" defaultValue={Array.from(new Array(formValues.cases.length)).map((_, index: number) => `${index}`)}>
+            <AccordionRoot multiple defaultValue={Array.from(new Array(formValues.cases.length)).map((_, index: number) => `${index}`)}>
               {
                 formValues.cases.length === 1
                 ?
