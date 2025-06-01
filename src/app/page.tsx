@@ -2,16 +2,16 @@
 import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1 } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
-import { Box, Button, Center, CloseButton, FieldErrorText, FieldLabel, FieldRoot, Flex, HStack, InputGroup, NumberInputControl, NumberInputInput, NumberInputRoot, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, VStack } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, InputGroup, NumberInputControl, NumberInputInput, NumberInputRoot, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, VStack } from "@chakra-ui/react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
 
 type BaseCaseFormValues = {
-  numOfSame?: number;
-  numOfSingle?: number;
-  totalNumber?: number;
+  numOfStyles?: number;
+  quantityPerStyle?: number;
+  totalQuantity?: number;
 } & Record<string, number>;
 
 type FormValues = {
@@ -34,6 +34,7 @@ export default function Home() {
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
+  const [formValues, setFormValues] = useState<FormValues>();
   const {
     control,
     handleSubmit,
@@ -43,9 +44,9 @@ export default function Home() {
       width: 1,
       height: 1,
       cases: [{
-        numOfSame: 1,
-        numOfSingle: 100,
-        totalNumber: 1000
+        numOfStyles: 1,
+        quantityPerStyle: 100,
+        totalQuantity: 1000
       }]
     }
   });
@@ -86,9 +87,9 @@ export default function Home() {
 
   const onAddNewBaseCase = useCallback(() => {
     appendCase({
-      numOfSame: 1,
-      numOfSingle: 100,
-      totalNumber: 1000
+      numOfStyles: 1,
+      quantityPerStyle: 100,
+      totalQuantity: 1000
     });
   }, [appendCase]);
 
@@ -193,6 +194,7 @@ export default function Home() {
   const onSubmit = useCallback((values: FormValues) => {
     console.log(values);
     console.log("selectedOptionRecords: ", selectedOptionRecords);
+    setFormValues(values);
   }, [selectedOptionRecords]);
 
   const onSelectedProductSubcategoryChange = useCallback(({value}: {value: string}) => setSelectedProductSubcategoryId(Number(value)), []);
@@ -319,7 +321,106 @@ export default function Home() {
         </SimpleGrid>
       </RadioCardRoot>
     );
-  }, [control]);
+  }, []);
+
+  const renderQutationDetailPanel = useCallback((caseItem: BaseCaseFormValues, index: number) => {
+    return (
+      <VStack>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Product Name</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{productSubcategories.find(({id}) => id === selectedProductSubcategoryId)?.name}</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Printing Type</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name}</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Size</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{formValues?.width || 0}mm x {formValues?.height || 0}mm</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Flat Size</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{(formValues?.height || 0) * 2}mm x {formValues?.width || 0}mm</Text>
+        </FieldRoot>
+        {
+          Object.values(selectedOptionRecords).map((option: CategoryOption) => (
+            option.isMaterial
+            ?
+            (option as CategoryOption<true>).suboptions.map((materialSuboption: CategoryMaterialSuboption | undefined, index: number) => (
+              materialSuboption
+              ?
+              <Fragment key={`option-${option.id}-materialsuboption-${materialSuboption.id}`}>
+                {
+                  materialSuboption.suboptions.map((suboption: CategorySuboption) => (
+                    <FieldRoot orientation="horizontal" w="full" key={`option-${option.id}-materialsuboption-${materialSuboption.id}-suboption-${suboption.id}`}>
+                      <FieldLabel alignSelf="flex-start">
+                        <Text whiteSpace="nowrap" lineHeight="2.5rem">{`${option.name}${option.suboptions.length > 1 ? ` ${index + 1}` : ""}`}</Text>
+                      </FieldLabel>
+                      <Text whiteSpace="nowrap">{suboption.name}</Text>
+                    </FieldRoot>
+                  ))
+                }
+              </Fragment>
+              :
+              null
+            ))
+            :
+            <FieldRoot orientation="horizontal" w="full" key={`option-${option.id}`}>
+              <FieldLabel alignSelf="flex-start">
+                <Text whiteSpace="nowrap" lineHeight="2.5rem">{option.name}</Text>
+              </FieldLabel>
+              <Text whiteSpace="nowrap">{(option as CategoryOption<false>).suboptions[0].name}</Text>
+            </FieldRoot>
+            
+          ))
+        }
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Number of Styles</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{caseItem.numOfStyles}</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Quantity per Style</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{caseItem.quantityPerStyle}</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Total Quantity</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">{caseItem.totalQuantity}</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Product Quotation</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">...</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Estimated Weight</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">...</Text>
+        </FieldRoot>
+        <FieldRoot orientation="horizontal" w="full">
+          <FieldLabel alignSelf="flex-start">
+            <Text whiteSpace="nowrap" lineHeight="2.5rem">Estimated Delivery Time</Text>
+          </FieldLabel>
+          <Text whiteSpace="nowrap">...</Text>
+        </FieldRoot>
+      </VStack>
+    );
+  }, [formValues, selectedOptionRecords]);
 
   return (
     <VStack w="full" h="full" p="4" align="flex-start">
@@ -440,12 +541,12 @@ export default function Home() {
                       animationDuration: "120ms"
                     }}
                   >
-                    <FieldRoot orientation="horizontal" justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfSame}>
+                    <FieldRoot orientation="horizontal" justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfStyles}>
                       <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                        <Text textAlign="right">Number of styles of the same size:</Text>
+                        <Text textAlign="right">Number of Styles in the Same Size:</Text>
                       </FieldLabel>
                       <Controller
-                        name={`cases.${index}.numOfSame`}
+                        name={`cases.${index}.numOfStyles`}
                         control={control}
                         render={({ field }) => (
                           <NumberInputRoot
@@ -464,15 +565,15 @@ export default function Home() {
                           </NumberInputRoot>
                         )}
                       />
-                      <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfSame || "") as string}</FieldErrorText>
+                      <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfStyles || "") as string}</FieldErrorText>
                     </FieldRoot>
                     <HStack w="full">
-                      <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).numOfSingle}>
+                      <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).quantityPerStyle}>
                         <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                          <Text textAlign="right">Number of single styles:</Text>
+                          <Text textAlign="right">Quantity per Style:</Text>
                         </FieldLabel>
                         <Controller
-                          name={`cases.${index}.numOfSingle`}
+                          name={`cases.${index}.quantityPerStyle`}
                           control={control}
                           render={({ field }) => (
                             <NumberInputRoot
@@ -493,14 +594,14 @@ export default function Home() {
                             </NumberInputRoot>
                           )}
                         />
-                        <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfSingle || "") as string}</FieldErrorText>
+                        <FieldErrorText>{(((errors.cases || [])[index] || {}).quantityPerStyle || "") as string}</FieldErrorText>
                       </FieldRoot>
-                      <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalNumber}>
+                      <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalQuantity}>
                         <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                          <Text lineHeight="2.5rem">Total number:</Text>
+                          <Text lineHeight="2.5rem">Total Quantity:</Text>
                         </FieldLabel>
                         <Controller
-                          name={`cases.${index}.totalNumber`}
+                          name={`cases.${index}.totalQuantity`}
                           control={control}
                           render={({ field }) => (
                             <NumberInputRoot
@@ -521,7 +622,7 @@ export default function Home() {
                             </NumberInputRoot>
                           )}
                         />
-                        <FieldErrorText>{(((errors.cases || [])[index] || {}).totalNumber || "") as string}</FieldErrorText>
+                        <FieldErrorText>{(((errors.cases || [])[index] || {}).totalQuantity || "") as string}</FieldErrorText>
                       </FieldRoot>
                     </HStack>
                     {
@@ -563,15 +664,6 @@ export default function Home() {
                         :
                         renderNonMaterialSuboptionArea(option as CategoryOption<false>, index)
                       }
-                      {/* {
-                        option.isMaterial
-                        ?
-                        <Button variant="solid" w="full">
-                          <LuPlus />
-                        </Button>
-                        :
-                        null
-                      } */}
                     </VStack>
                   </FieldRoot>
                   :
@@ -581,7 +673,38 @@ export default function Home() {
             }
           </VStack>
         </VStack>
-        <Box w="350px" bg="red.400"></Box>
+        {
+          (formValues?.cases?.length && formValues?.width && formValues?.height)
+          ?
+          <VStack alignItems="flex-start">
+            <Box bg="bg.muted" w="full" p="2" borderTopLeftRadius="0.25rem" borderTopRightRadius="0.25rem">
+              <Heading size="md">Quotation Details for</Heading>
+              <Text>
+                <Span textTransform="capitalize">{printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name}</Span> of <Span textTransform="capitalize">{`${productSubcategories.find(({id}) => id === selectedProductSubcategoryId)?.name}s`}</Span></Text>
+            </Box>
+            <AccordionRoot multiple w="25rem" defaultValue={Array.from(new Array(formValues.cases.length)).map((_, index: number) => `${index}`)}>
+              {
+                formValues.cases.length === 1
+                ?
+                renderQutationDetailPanel(formValues.cases[0], 0)
+                :
+                formValues.cases.map((caseItem: BaseCaseFormValues, index: number) => (
+                  <AccordionItem key={`case-${index}`} value={`${index}`}>
+                    <AccordionItemTrigger>
+                      <Span flex="1">Quantity (Option {index + 1})</Span>
+                      <AccordionItemIndicator />
+                    </AccordionItemTrigger>
+                    <AccordionItemContent>
+                      <AccordionItemBody>{renderQutationDetailPanel(caseItem, index)}</AccordionItemBody>
+                    </AccordionItemContent>
+                  </AccordionItem>
+                ))
+              }
+            </AccordionRoot>
+          </VStack>
+          :
+          null
+        }
       </Flex>
     </VStack>
   );
