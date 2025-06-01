@@ -13,10 +13,20 @@ export interface ProductSubcategory extends Category {}
 
 export interface PrintingType extends Category {}
 
-export interface CategoryOption extends Category {
-  numOfDuplicate: number;
-  isDynamic: boolean;
+export interface CategoryMaterialSuboption {
+  id: number;
+  shown: boolean;
   suboptions: CategorySuboption[];
+}
+
+export interface CategoryOption<T extends boolean = boolean> extends Category {
+  isMaterial: T;
+  suboptions: T extends true ? (CategoryMaterialSuboption | undefined)[] : CategorySuboption[];
+}
+
+interface CategoryOptionFromService<T extends boolean = boolean> extends Category {
+  isMaterial: T;
+  suboptions: T extends true ? CategorySuboption[][] : CategorySuboption[];
 }
 
 export interface CategorySuboption extends Category {}
@@ -62,10 +72,10 @@ type FetchCategoryOptionParams = {
   categoryPrintingTypeId: number;
 };
 
-export const fetchCategoryOptions = createAsyncThunk<CategoryOption[], FetchCategoryOptionParams>(
+export const fetchCategoryOptions = createAsyncThunk<CategoryOptionFromService[], FetchCategoryOptionParams>(
   "categories/fetchCategoryOptions",
-  async (params: FetchCategoryOptionParams): Promise<CategoryOption[]> => {
-    const {data, error} = await get<{}, CategoryOption[]>(`/categories/options/${params.categoryProductSubcategoryId}/${params.categoryPrintingTypeId}`);
+  async (params: FetchCategoryOptionParams): Promise<CategoryOptionFromService[]> => {
+    const {data, error} = await get<{}, CategoryOptionFromService[]>(`/categories/options/${params.categoryProductSubcategoryId}/${params.categoryPrintingTypeId}`);
     if (error) {
       throw error;
     }
@@ -77,6 +87,32 @@ export const categoriesSlice = createSlice({
   name: "categories",
   initialState: initialState,
   reducers: {
+    showMaterialSuboption1By1: (state: CategoriesState, action: PayloadAction<number>) => {
+      const optionId: number = action.payload;
+      const option: CategoryOption | undefined = state.options.find((option: CategoryOption) => option.id === optionId);
+      if (option && option.isMaterial) {
+        const suboptions: (CategoryMaterialSuboption | undefined)[] = (option as CategoryOption<true>).suboptions;
+        for (let i: number = 0; i < suboptions.length; ++i) {
+          const suboption: CategoryMaterialSuboption | undefined = suboptions[i];
+          if (suboption && !suboption.shown) {
+            suboption.shown = true;
+            state.options = [...state.options];
+            break;
+          }
+        }
+      }
+    },
+    hideMaterialSuboption: (state: CategoriesState, action: PayloadAction<{optionId: number, suboptionId: number}>) => {
+      const {optionId, suboptionId} = action.payload;
+      const option: CategoryOption | undefined = state.options.find((option: CategoryOption) => option.id === optionId);
+      if (option && option.isMaterial) {
+        const materialSuboption: CategoryMaterialSuboption | undefined = (option as CategoryOption<true>).suboptions.find((suboption: CategoryMaterialSuboption | undefined) => suboption?.id === suboptionId);
+        if (materialSuboption) {
+          materialSuboption.shown = false;
+          state.options = [...state.options];
+        }
+      }
+    }
   },
   extraReducers: (builder: ActionReducerMapBuilder<CategoriesState>) => {
     [fetchAllProductSubcategories, fetchAllPrintingTypes, fetchCategoryOptions].forEach((asyncThunk) => {
@@ -96,13 +132,31 @@ export const categoriesSlice = createSlice({
       state.printingTypes = action.payload;
       state.loading = false;
     });
-    builder.addCase(fetchCategoryOptions.fulfilled, (state: CategoriesState, action: PayloadAction<CategoryOption[]>) => {
-      state.options = action.payload;
+    builder.addCase(fetchCategoryOptions.fulfilled, (state: CategoriesState, action: PayloadAction<CategoryOptionFromService[]>) => {
+      state.options = action.payload.map((option: CategoryOptionFromService<boolean>): CategoryOption<boolean> => {
+        if (option.isMaterial) {
+          return {
+            ...option,
+            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: CategorySuboption[], index: number): CategoryMaterialSuboption => {
+              return {
+                id: index,
+                shown: suboptions.length > 0 && index === 0,
+                suboptions: suboptions
+              };
+            })
+          };
+        }
+        return { ...(option as CategoryOptionFromService<false>) };
+      });
+
       state.loading = false;
     });
   }
 });
 
-export const {} = categoriesSlice.actions;
+export const {
+  showMaterialSuboption1By1,
+  hideMaterialSuboption
+} = categoriesSlice.actions;
 
 export default categoriesSlice.reducer;

@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useAppDispatch } from "@/lib/hooks";
 import { login } from "@/lib/features/auth.slice";
 import { Button, CardBody, CardDescription, CardFooter, CardHeader, CardRoot, CardTitle, FieldErrorText, FieldLabel, FieldRoot, Flex, Input, Stack } from "@chakra-ui/react";
-import { FieldValues, Resolver, useForm } from "react-hook-form";
+import { Resolver, useForm } from "react-hook-form";
 import { PasswordInput } from "@/components/ui/password-input";
 
 interface FormValues {
