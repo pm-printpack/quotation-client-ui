@@ -2,9 +2,9 @@
 import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1 } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
-import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, InputGroup, NumberInputControl, NumberInputInput, NumberInputRoot, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, VStack } from "@chakra-ui/react";
-import { Fragment, useCallback, useEffect, useState } from "react";
-import { LuPlus } from "react-icons/lu";
+import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, ListItem, ListRoot, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
+import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
+import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
 
@@ -28,6 +28,7 @@ export default function Home() {
   }
 
   const dispatch = useAppDispatch();
+  const isMobile: boolean | undefined = useBreakpointValue({ base: true, sm: false });
   const productSubcategories: ProductSubcategory[] = useAppSelector((state: RootState) => state.categories.productSubcategories);
   const printingTypes: PrintingType[] = useAppSelector((state: RootState) => state.categories.printingTypes);
   const options: CategoryOption[] = useAppSelector((state: RootState) => state.categories.options);
@@ -35,6 +36,7 @@ export default function Home() {
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
   const [formValues, setFormValues] = useState<FormValues>();
+  const [productSubcategoryMenuOpen, setProductSubcategoryMenuOpen] = useState<boolean>(false);
   const {
     control,
     handleSubmit,
@@ -213,7 +215,7 @@ export default function Home() {
               <Flex
                 key={`materialSuboption-${materialSuboption.id}`}
                 w="full"
-                direction="row"
+                direction={{base: "column", md: "row"}}
                 gap="4"
                 align="flex-start"
                 {
@@ -253,11 +255,8 @@ export default function Home() {
                   align="center"
                   w="full"
                   variant="outline"
-                  // key={`category-option-${option.id}-sub-${suboptionIndex}`}
                   value={getSelectedValueOfMaterialSuboption(option, materialSuboption.id)}
                   onValueChange={setSelectedValueOfMaterialSuboption(option, materialSuboption.id)}
-                  // value={`${field.value}`}
-                  // onValueChange={setSelectedValueOfMaterialSuboption}
                 >
                   <SimpleGrid w="full" gap={4} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
                     {
@@ -323,33 +322,28 @@ export default function Home() {
     );
   }, []);
 
+  const onCategoryProductSubcategoryMenuItemClick = useCallback((categoryProductSubcategoryId: number) => {
+    return () => {
+      setSelectedProductSubcategoryId(categoryProductSubcategoryId);
+      setProductSubcategoryMenuOpen(false);
+    };
+  }, []);
+
   const renderQutationDetailPanel = useCallback((caseItem: BaseCaseFormValues, index: number) => {
     return (
-      <VStack>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Product Name</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{productSubcategories.find(({id}) => id === selectedProductSubcategoryId)?.name}</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Printing Type</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name}</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Size</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{formValues?.width || 0}mm x {formValues?.height || 0}mm</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Flat Size</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{(formValues?.height || 0) * 2}mm x {formValues?.width || 0}mm</Text>
-        </FieldRoot>
+      <DataListRoot orientation="horizontal">
+        <DataListItem>
+          <DataListItemLabel>Product Name</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">{productSubcategories.find(({id}) => id === selectedProductSubcategoryId)?.name}</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Printing Type</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">{printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name}</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Size</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">{formValues?.width || 0}mm x {formValues?.height || 0}mm</DataListItemValue>
+        </DataListItem>
         {
           Object.values(selectedOptionRecords).map((option: CategoryOption) => (
             option.isMaterial
@@ -360,12 +354,10 @@ export default function Home() {
               <Fragment key={`option-${option.id}-materialsuboption-${materialSuboption.id}`}>
                 {
                   materialSuboption.suboptions.map((suboption: CategorySuboption) => (
-                    <FieldRoot orientation="horizontal" w="full" key={`option-${option.id}-materialsuboption-${materialSuboption.id}-suboption-${suboption.id}`}>
-                      <FieldLabel alignSelf="flex-start">
-                        <Text whiteSpace="nowrap" lineHeight="2.5rem">{`${option.name}${option.suboptions.length > 1 ? ` ${index + 1}` : ""}`}</Text>
-                      </FieldLabel>
-                      <Text whiteSpace="nowrap">{suboption.name}</Text>
-                    </FieldRoot>
+                    <DataListItem key={`option-${option.id}-materialsuboption-${materialSuboption.id}-suboption-${suboption.id}`}>
+                      <DataListItemLabel>{`${option.name}${option.suboptions.length > 1 ? ` ${index + 1}` : ""}`}</DataListItemLabel>
+                      <DataListItemValue justifyContent="flex-end">{suboption.name}</DataListItemValue>
+                    </DataListItem>
                   ))
                 }
               </Fragment>
@@ -373,72 +365,114 @@ export default function Home() {
               null
             ))
             :
-            <FieldRoot orientation="horizontal" w="full" key={`option-${option.id}`}>
-              <FieldLabel alignSelf="flex-start">
-                <Text whiteSpace="nowrap" lineHeight="2.5rem">{option.name}</Text>
-              </FieldLabel>
-              <Text whiteSpace="nowrap">{(option as CategoryOption<false>).suboptions[0].name}</Text>
-            </FieldRoot>
-            
+            <DataListItem key={`option-${option.id}`}>
+              <DataListItemLabel>{option.name}</DataListItemLabel>
+              <DataListItemValue justifyContent="flex-end">{(option as CategoryOption<false>).suboptions[0].name}</DataListItemValue>
+            </DataListItem>
           ))
         }
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Number of Styles</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{caseItem.numOfStyles}</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Quantity per Style</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{caseItem.quantityPerStyle}</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Total Quantity</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">{caseItem.totalQuantity}</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Product Quotation</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">...</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Estimated Weight</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">...</Text>
-        </FieldRoot>
-        <FieldRoot orientation="horizontal" w="full">
-          <FieldLabel alignSelf="flex-start">
-            <Text whiteSpace="nowrap" lineHeight="2.5rem">Estimated Delivery Time</Text>
-          </FieldLabel>
-          <Text whiteSpace="nowrap">...</Text>
-        </FieldRoot>
-      </VStack>
+        <DataListItem>
+          <DataListItemLabel>Number of Styles</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">{caseItem.numOfStyles}</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Quantity per Style</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">{caseItem.quantityPerStyle}</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Total Quantity</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">{caseItem.totalQuantity}</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Product Quotation</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Estimated Weight</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
+        </DataListItem>
+        <DataListItem>
+          <DataListItemLabel>Estimated Delivery Time</DataListItemLabel>
+          <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
+        </DataListItem>
+      </DataListRoot>
     );
   }, [formValues, selectedOptionRecords]);
 
   return (
     <VStack w="full" h="full" p="4" align="flex-start">
-      <TabsRoot
-        value={`${selectedProductSubcategoryId}`}
-        variant="subtle"
-        onValueChange={onSelectedProductSubcategoryChange}
-      >
-        <TabsList>
-          {
-            productSubcategories.map((productSubcategory: ProductSubcategory) => (
-              <TabsTrigger value={`${productSubcategory.id}`} key={`productSubcategory-${productSubcategory.id}`}>
-                {productSubcategory.name}
-              </TabsTrigger>
-            ))
-          }
-        </TabsList>
-      </TabsRoot>
+      {
+        isMobile
+        ?
+        <HStack w="full" justifyContent="space-between">
+          <TabsRoot
+            value={`${selectedProductSubcategoryId}`}
+            variant="subtle"
+          >
+            <TabsList>
+              {
+                productSubcategories
+                  .filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)
+                  .map((productSubcategory: ProductSubcategory) => (
+                    <TabsTrigger flexShrink={0} value={`${productSubcategory.id}`} key={`m-productSubcategory-${productSubcategory.id}`}>
+                      {productSubcategory.name}
+                    </TabsTrigger>
+                  ))
+              }
+            </TabsList>
+          </TabsRoot>
+          <DrawerRoot open={productSubcategoryMenuOpen} onOpenChange={(e: DrawerOpenChangeDetails) => setProductSubcategoryMenuOpen(e.open)}>
+            <DrawerTrigger asChild>
+              <IconButton variant="subtle" aria-label="Open Drawer" rounded="full">
+                <LuPanelRightOpen />
+              </IconButton>
+            </DrawerTrigger>
+            <Portal>
+              <DrawerBackdrop>
+                <DrawerPositioner>
+                  <DrawerContent>
+                    <DrawerBody>
+                      <VStack separator={<StackSeparator />} p="4">
+                        {
+                          productSubcategories.map((productSubcategory: ProductSubcategory) => (
+                            <Link key={`li-productSubcategory-${productSubcategory.id}`} fontSize={20} w="full" onClick={onCategoryProductSubcategoryMenuItemClick(productSubcategory.id)}>
+                              <Box w="full" p="5" backgroundColor={productSubcategory.id === selectedProductSubcategoryId ? "teal.100" : "inherit"}>{productSubcategory.name}</Box>
+                            </Link>
+                          ))
+                        }
+                      </VStack>
+                    </DrawerBody>
+                  </DrawerContent>
+                </DrawerPositioner>
+              </DrawerBackdrop>
+            </Portal>
+          </DrawerRoot>
+        </HStack>
+        :
+        <TabsRoot
+          value={`${selectedProductSubcategoryId}`}
+          variant="subtle"
+          onValueChange={onSelectedProductSubcategoryChange}
+        >
+          <TabsList
+            overflowY="hidden"
+            css={{
+              scrollbarWidth: "none",
+              "::WebkitScrollbar": {
+                display: "none"
+              }
+            }}
+          >
+            {
+              productSubcategories.map((productSubcategory: ProductSubcategory) => (
+                <TabsTrigger flexShrink={0} value={`${productSubcategory.id}`} key={`productSubcategory-${productSubcategory.id}`}>
+                  {productSubcategory.name}
+                </TabsTrigger>
+              ))
+            }
+          </TabsList>
+        </TabsRoot>
+      }
       <Separator w="full" />
       <TabsRoot
         value={`${selectedPrintingTypeId}`}
@@ -460,6 +494,7 @@ export default function Home() {
           align="flex-start"
           flex="1"
           gap="4"
+          w="full"
           as="form"
           onSubmit={handleSubmit(onSubmit)}
         >
@@ -467,15 +502,14 @@ export default function Home() {
             w="full"
             gap="4"
             css={{ "--field-label-width": "9.375rem" }}
+            alignItems="flex-start"
             bg="bg.muted"
-            paddingY="0.75rem"
+            padding="0.75rem"
             borderRadius="0.25rem"
           >
-            <HStack w="full">
-              <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!errors.width}>
-                <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                  <Text lineHeight="2.5rem">Size:</Text>
-                </FieldLabel>
+            <Stack w="full" direction={{base: "column", sm: "row"}}>
+              <Text lineHeight={{sm: "2.5rem"}} w={{sm: "8.625rem"}} textAlign={{sm: "right"}}>Size:</Text>
+              <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.width}>
                 <Controller
                   name="width"
                   control={control}
@@ -484,6 +518,7 @@ export default function Home() {
                       defaultValue="1"
                       min={1}
                       bg="bg.panel"
+                      w={{base: "full"}}
                       clampValueOnBlur={true}
                       name={field.name}
                       value={`${field.value}`}
@@ -500,8 +535,8 @@ export default function Home() {
                 />
                 <FieldErrorText>{errors.width?.message}</FieldErrorText>
               </FieldRoot>
-              <Text>x</Text>
-              <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!errors.height}>
+              <Text alignSelf={{base: "center"}}>x</Text>
+              <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.height}>
                 <Controller
                   name="height"
                   control={control}
@@ -510,6 +545,7 @@ export default function Home() {
                       defaultValue="1"
                       min={1}
                       bg="bg.panel"
+                      w={{base: "full"}}
                       clampValueOnBlur={true}
                       name={field.name}
                       value={`${field.value}`}
@@ -526,13 +562,14 @@ export default function Home() {
                 />
                 <FieldErrorText>{errors.height?.message}</FieldErrorText>
               </FieldRoot>
-            </HStack>
+            </Stack>
             {
               caseFields.map((caseField, index: number) => (
-                <Box key={`base-case-${index}`} paddingX="0.75rem" w="full">
+                <Box key={`base-case-${index}`} w="full">
                   <VStack
                     w="full"
                     paddingY="0.75rem"
+                    paddingX={{base: "0.75rem"}}
                     borderRadius="0.25rem"
                     position="relative"
                     bg="bg.emphasized"
@@ -547,8 +584,8 @@ export default function Home() {
                       animationDuration: "120ms"
                     }}
                   >
-                    <FieldRoot orientation="horizontal" justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfStyles}>
-                      <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
+                    <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfStyles}>
+                      <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
                         <Text textAlign="right">Number of Styles in the Same Size:</Text>
                       </FieldLabel>
                       <Controller
@@ -559,6 +596,7 @@ export default function Home() {
                             defaultValue={`${field.value}`}
                             min={1}
                             bg="bg.panel"
+                            w={{base: "full", md: "auto"}}
                             clampValueOnBlur={true}
                             name={field.name}
                             value={`${field.value}`}
@@ -573,10 +611,10 @@ export default function Home() {
                       />
                       <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfStyles || "") as string}</FieldErrorText>
                     </FieldRoot>
-                    <HStack w="full">
-                      <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).quantityPerStyle}>
-                        <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                          <Text textAlign="right">Quantity per Style:</Text>
+                    <Stack w="full" direction={{base: "column", md: "row"}}>
+                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).quantityPerStyle}>
+                        <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
+                          <Text>Quantity per Style:</Text>
                         </FieldLabel>
                         <Controller
                           name={`cases.${index}.quantityPerStyle`}
@@ -586,6 +624,7 @@ export default function Home() {
                               defaultValue={`${field.value}`}
                               min={1}
                               bg="bg.panel"
+                              w={{base: "full"}}
                               clampValueOnBlur={true}
                               name={field.name}
                               value={`${field.value}`}
@@ -602,9 +641,9 @@ export default function Home() {
                         />
                         <FieldErrorText>{(((errors.cases || [])[index] || {}).quantityPerStyle || "") as string}</FieldErrorText>
                       </FieldRoot>
-                      <FieldRoot orientation="horizontal" justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalQuantity}>
-                        <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                          <Text lineHeight="2.5rem">Total Quantity:</Text>
+                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalQuantity}>
+                        <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
+                          <Text>Total Quantity:</Text>
                         </FieldLabel>
                         <Controller
                           name={`cases.${index}.totalQuantity`}
@@ -614,6 +653,7 @@ export default function Home() {
                               defaultValue={`${field.value}`}
                               min={1}
                               bg="bg.panel"
+                              w={{base: "full"}}
                               clampValueOnBlur={true}
                               name={field.name}
                               value={`${field.value}`}
@@ -630,11 +670,11 @@ export default function Home() {
                         />
                         <FieldErrorText>{(((errors.cases || [])[index] || {}).totalQuantity || "") as string}</FieldErrorText>
                       </FieldRoot>
-                    </HStack>
+                    </Stack>
                     {
                       caseFields.length > 1
                       ?
-                      <CloseButton size="sm" position="absolute" top="1rem" right="1rem" onClick={onDeleteBaseCase(index)}/>
+                      <CloseButton size="sm" position="absolute" top={{base: "-0.5rem", md: "1rem"}} right={{md: "1rem"}} left={{base:"-0.5rem", md: "auto"}} onClick={onDeleteBaseCase(index)}/>
                       :
                       null
                     }
@@ -642,14 +682,9 @@ export default function Home() {
                 </Box>
               ))
             }
-            <FieldRoot orientation="horizontal" justifyContent="flex-start" w="full">
-              <FieldLabel>
-                <Text textAlign="right"></Text>
-              </FieldLabel>
-              <Button variant="subtle" onClick={onAddNewBaseCase}>
-                <LuPlus />
-              </Button>
-            </FieldRoot>
+            <Button variant="subtle" marginLeft={{base: 0, sm: "9.75rem"}} w={{base: "full", sm: "auto"}} onClick={onAddNewBaseCase}>
+              <LuPlus />
+            </Button>
             <Button variant="solid" type="submit">Submit</Button>
           </VStack>
           <VStack align="flex-start" w="full" gap="4" css={{ "--field-label-width": "9.375rem" }}>
@@ -658,7 +693,7 @@ export default function Home() {
                 return (
                   ((!option.isMaterial && option.suboptions.length > 0) || (option.isMaterial && option.suboptions.length > 0 && (option as CategoryOption<true>).suboptions.filter((suboption: CategoryMaterialSuboption | undefined) => suboption?.shown).length > 0))
                   ?
-                  <FieldRoot orientation="horizontal" key={`option-${option.id}`} alignItems="flex-start">
+                  <FieldRoot orientation={{base: "vertical", md: "horizontal"}} key={`option-${option.id}`} alignItems="flex-start">
                     <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
                       <Text fontWeight="bold" lineHeight="2.25rem">{option.name}:</Text>
                     </FieldLabel>
@@ -684,7 +719,14 @@ export default function Home() {
           ?
           <VStack
             alignItems="flex-start"
-            w="25rem"
+            position={{base: "absolute", md: "relative"}}
+            bg="bg.panel"
+            top="0"
+            left="0"
+            right="0"
+            bottom="0"
+            p={{base: "1rem", md: 0}}
+            w={{base: "full", md: "25rem"}}
             data-state="open"
             _open={{
               animationName: "fade-in, scale-in",
