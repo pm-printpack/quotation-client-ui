@@ -29,7 +29,9 @@ interface CategoryOptionFromService<T extends boolean = boolean> extends Categor
   suboptions: T extends true ? CategorySuboption[][] : CategorySuboption[];
 }
 
-export interface CategorySuboption extends Category {}
+export interface CategorySuboption extends Category {
+  unitPrice: number;
+}
 
 interface CategoriesState {
   loading: boolean;
@@ -137,7 +139,14 @@ export const categoriesSlice = createSlice({
         if (option.isMaterial) {
           return {
             ...option,
-            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: CategorySuboption[], index: number): CategoryMaterialSuboption => {
+            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: CategorySuboption[] | null, index: number): CategoryMaterialSuboption => {
+              if (!suboptions) {
+                return {
+                  id: index,
+                  shown: false,
+                  suboptions: []
+                };
+              }
               return {
                 id: index,
                 shown: suboptions.length > 0 && index === 0,

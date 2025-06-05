@@ -2,21 +2,16 @@
 import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1 } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
-import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, ListItem, ListRoot, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
-import { Fragment, ReactNode, useCallback, useEffect, useState } from "react";
+import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, ListItem, ListRoot, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackProps, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
+import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, Size } from "@/lib/features/calculation.slice";
 
-type BaseCaseFormValues = {
-  numOfStyles?: number;
-  quantityPerStyle?: number;
-  totalQuantity?: number;
-} & Record<string, number>;
+type BaseCaseFormValues = BaseCaseValue;
 
-type FormValues = {
-  width: number;
-  height: number;
+type FormValues = Size & {
   cases: BaseCaseFormValues[];
 };
 
@@ -32,6 +27,7 @@ export default function Home() {
   const productSubcategories: ProductSubcategory[] = useAppSelector((state: RootState) => state.categories.productSubcategories);
   const printingTypes: PrintingType[] = useAppSelector((state: RootState) => state.categories.printingTypes);
   const options: CategoryOption[] = useAppSelector((state: RootState) => state.categories.options);
+  const totalPrice: number = useAppSelector((state: RootState) => state.calculation.totalPrice);
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
@@ -197,6 +193,14 @@ export default function Home() {
     console.log(values);
     console.log("selectedOptionRecords: ", selectedOptionRecords);
     setFormValues(values);
+     if (values) {
+      dispatch(calculateTotalPriceByDigitalPrinting({
+        width: values.width,
+        height: values.height,
+        baseCase: values.cases[0],
+        options: Object.values(selectedOptionRecords)
+      }));
+    }
   }, [selectedOptionRecords]);
 
   const onSelectedProductSubcategoryChange = useCallback(({value}: {value: string}) => setSelectedProductSubcategoryId(Number(value)), []);
@@ -306,7 +310,7 @@ export default function Home() {
         value={getSelectedValueOfNonMaterialSuboption(option)}
         onValueChange={setSelectedValueOfNonMaterialSuboption(option)}
       >
-        <SimpleGrid w="full" gap={4} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
+        <SimpleGrid w="full" gap={{md: 4, base: 2}} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
           {
             option.suboptions.map((suboption: CategorySuboption) => (
               <RadioCardItem key={`suboption-${suboption.id}`} value={`${suboption.id}`} className={styles.radioCardItem}>
@@ -385,7 +389,7 @@ export default function Home() {
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Product Quotation</DataListItemLabel>
-          <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
+          <DataListItemValue justifyContent="flex-end">{totalPrice || "-"}</DataListItemValue>
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Estimated Weight</DataListItemLabel>
@@ -400,7 +404,7 @@ export default function Home() {
   }, [formValues, selectedOptionRecords]);
 
   return (
-    <VStack w="full" h="full" p="4" align="flex-start">
+    <VStack w="full" h="full" p={{base: "2", md: "4"}} align="flex-start">
       {
         isMobile
         ?
@@ -490,230 +494,236 @@ export default function Home() {
         </TabsList>
       </TabsRoot>
       <Flex w="full" h="full" gap="4" marginTop="0.5rem">
-        <VStack
-          align="flex-start"
-          flex="1"
-          gap="4"
-          w="full"
-          as="form"
-          onSubmit={handleSubmit(onSubmit)}
-        >
+        {
+          (isMobile && formValues)
+          ?
+          undefined
+          :
           <VStack
-            w="full"
+            align="flex-start"
+            flex="1"
             gap="4"
-            css={{ "--field-label-width": "9.375rem" }}
-            alignItems="flex-start"
-            bg="bg.muted"
-            padding="0.75rem"
-            borderRadius="0.25rem"
+            w="full"
+            as="form"
+            onSubmit={handleSubmit(onSubmit)}
           >
-            <Stack w="full" direction={{base: "column", sm: "row"}}>
-              <Text lineHeight={{sm: "2.5rem"}} w={{sm: "8.625rem"}} textAlign={{sm: "right"}}>Size:</Text>
-              <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.width}>
-                <Controller
-                  name="width"
-                  control={control}
-                  render={({ field }) => (
-                    <NumberInputRoot
-                      defaultValue="1"
-                      min={1}
-                      bg="bg.panel"
-                      w={{base: "full"}}
-                      clampValueOnBlur={true}
-                      name={field.name}
-                      value={`${field.value}`}
-                      onValueChange={({ valueAsNumber }) => {
-                        field.onChange(valueAsNumber || 1)
+            <VStack
+              w="full"
+              gap="4"
+              css={{ "--field-label-width": "9.375rem" }}
+              alignItems="flex-start"
+              bg="bg.muted"
+              padding="0.75rem"
+              borderRadius="0.25rem"
+            >
+              <Stack w="full" direction={{base: "column", sm: "row"}}>
+                <Text lineHeight={{sm: "2.5rem"}} w={{sm: "8.625rem"}} textAlign={{sm: "right"}}>Size:</Text>
+                <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.width}>
+                  <Controller
+                    name="width"
+                    control={control}
+                    render={({ field }) => (
+                      <NumberInputRoot
+                        defaultValue="1"
+                        min={1}
+                        bg="bg.panel"
+                        w={{base: "full"}}
+                        clampValueOnBlur={true}
+                        name={field.name}
+                        value={`${field.value}`}
+                        onValueChange={({ valueAsNumber }) => {
+                          field.onChange(valueAsNumber || 1)
+                        }}
+                      >
+                        <NumberInputControl />
+                        <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
+                          <NumberInputInput onBlur={field.onBlur}/>
+                        </InputGroup>
+                      </NumberInputRoot>
+                    )}
+                  />
+                  <FieldErrorText>{errors.width?.message}</FieldErrorText>
+                </FieldRoot>
+                <Text alignSelf={{base: "center"}}>x</Text>
+                <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.height}>
+                  <Controller
+                    name="height"
+                    control={control}
+                    render={({ field }) => (
+                      <NumberInputRoot
+                        defaultValue="1"
+                        min={1}
+                        bg="bg.panel"
+                        w={{base: "full"}}
+                        clampValueOnBlur={true}
+                        name={field.name}
+                        value={`${field.value}`}
+                        onValueChange={({ valueAsNumber }) => {
+                          field.onChange(valueAsNumber || 1)
+                        }}
+                      >
+                        <NumberInputControl />
+                        <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
+                          <NumberInputInput onBlur={field.onBlur}/>
+                        </InputGroup>
+                      </NumberInputRoot>
+                    )}
+                  />
+                  <FieldErrorText>{errors.height?.message}</FieldErrorText>
+                </FieldRoot>
+              </Stack>
+              {
+                caseFields.map((caseField, index: number) => (
+                  <Box key={`base-case-${index}`} w="full">
+                    <VStack
+                      w="full"
+                      paddingY="0.75rem"
+                      paddingX={{base: "0.75rem"}}
+                      borderRadius="0.25rem"
+                      position="relative"
+                      bg="bg.emphasized"
+                      css={{ "--field-label-width": "8.625rem" }}
+                      data-state="open"
+                      _open={{
+                        animationName: "fade-in, scale-in",
+                        animationDuration: "300ms"
+                      }}
+                      _closed={{
+                        animationName: "fade-out, scale-out",
+                        animationDuration: "120ms"
                       }}
                     >
-                      <NumberInputControl />
-                      <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
-                        <NumberInputInput onBlur={field.onBlur}/>
-                      </InputGroup>
-                    </NumberInputRoot>
-                  )}
-                />
-                <FieldErrorText>{errors.width?.message}</FieldErrorText>
-              </FieldRoot>
-              <Text alignSelf={{base: "center"}}>x</Text>
-              <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.height}>
-                <Controller
-                  name="height"
-                  control={control}
-                  render={({ field }) => (
-                    <NumberInputRoot
-                      defaultValue="1"
-                      min={1}
-                      bg="bg.panel"
-                      w={{base: "full"}}
-                      clampValueOnBlur={true}
-                      name={field.name}
-                      value={`${field.value}`}
-                      onValueChange={({ valueAsNumber }) => {
-                        field.onChange(valueAsNumber || 1)
-                      }}
-                    >
-                      <NumberInputControl />
-                      <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
-                        <NumberInputInput onBlur={field.onBlur}/>
-                      </InputGroup>
-                    </NumberInputRoot>
-                  )}
-                />
-                <FieldErrorText>{errors.height?.message}</FieldErrorText>
-              </FieldRoot>
-            </Stack>
-            {
-              caseFields.map((caseField, index: number) => (
-                <Box key={`base-case-${index}`} w="full">
-                  <VStack
-                    w="full"
-                    paddingY="0.75rem"
-                    paddingX={{base: "0.75rem"}}
-                    borderRadius="0.25rem"
-                    position="relative"
-                    bg="bg.emphasized"
-                    css={{ "--field-label-width": "8.625rem" }}
-                    data-state="open"
-                    _open={{
-                      animationName: "fade-in, scale-in",
-                      animationDuration: "300ms"
-                    }}
-                    _closed={{
-                      animationName: "fade-out, scale-out",
-                      animationDuration: "120ms"
-                    }}
-                  >
-                    <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfStyles}>
-                      <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
-                        <Text textAlign="right">Number of Styles in the Same Size:</Text>
-                      </FieldLabel>
-                      <Controller
-                        name={`cases.${index}.numOfStyles`}
-                        control={control}
-                        render={({ field }) => (
-                          <NumberInputRoot
-                            defaultValue={`${field.value}`}
-                            min={1}
-                            bg="bg.panel"
-                            w={{base: "full", md: "auto"}}
-                            clampValueOnBlur={true}
-                            name={field.name}
-                            value={`${field.value}`}
-                            onValueChange={({ valueAsNumber }) => {
-                              field.onChange(valueAsNumber || 1);
-                            }}
-                          >
-                            <NumberInputControl />
-                            <NumberInputInput onBlur={field.onBlur}/>
-                          </NumberInputRoot>
-                        )}
-                      />
-                      <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfStyles || "") as string}</FieldErrorText>
-                    </FieldRoot>
-                    <Stack w="full" direction={{base: "column", md: "row"}}>
-                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).quantityPerStyle}>
+                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfStyles}>
                         <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
-                          <Text>Quantity per Style:</Text>
+                          <Text textAlign="right">Number of Styles in the Same Size:</Text>
                         </FieldLabel>
                         <Controller
-                          name={`cases.${index}.quantityPerStyle`}
+                          name={`cases.${index}.numOfStyles`}
                           control={control}
                           render={({ field }) => (
                             <NumberInputRoot
                               defaultValue={`${field.value}`}
                               min={1}
                               bg="bg.panel"
-                              w={{base: "full"}}
+                              w={{base: "full", md: "auto"}}
                               clampValueOnBlur={true}
                               name={field.name}
                               value={`${field.value}`}
                               onValueChange={({ valueAsNumber }) => {
-                                field.onChange(valueAsNumber || 1)
+                                field.onChange(valueAsNumber || 1);
                               }}
                             >
                               <NumberInputControl />
-                              <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">PCS</Text>}>
-                                <NumberInputInput onBlur={field.onBlur}/>
-                              </InputGroup>
+                              <NumberInputInput onBlur={field.onBlur}/>
                             </NumberInputRoot>
                           )}
                         />
-                        <FieldErrorText>{(((errors.cases || [])[index] || {}).quantityPerStyle || "") as string}</FieldErrorText>
+                        <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfStyles || "") as string}</FieldErrorText>
                       </FieldRoot>
-                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalQuantity}>
-                        <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
-                          <Text>Total Quantity:</Text>
-                        </FieldLabel>
-                        <Controller
-                          name={`cases.${index}.totalQuantity`}
-                          control={control}
-                          render={({ field }) => (
-                            <NumberInputRoot
-                              defaultValue={`${field.value}`}
-                              min={1}
-                              bg="bg.panel"
-                              w={{base: "full"}}
-                              clampValueOnBlur={true}
-                              name={field.name}
-                              value={`${field.value}`}
-                              onValueChange={({ valueAsNumber }) => {
-                                field.onChange(valueAsNumber || 1)
-                              }}
-                            >
-                              <NumberInputControl />
-                              <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">PCS</Text>}>
-                                <NumberInputInput onBlur={field.onBlur}/>
-                              </InputGroup>
-                            </NumberInputRoot>
-                          )}
-                        />
-                        <FieldErrorText>{(((errors.cases || [])[index] || {}).totalQuantity || "") as string}</FieldErrorText>
-                      </FieldRoot>
-                    </Stack>
-                    {
-                      caseFields.length > 1
-                      ?
-                      <CloseButton size="sm" position="absolute" top={{base: "-0.5rem", md: "1rem"}} right={{md: "1rem"}} left={{base:"-0.5rem", md: "auto"}} onClick={onDeleteBaseCase(index)}/>
-                      :
-                      null
-                    }
-                  </VStack>
-                </Box>
-              ))
-            }
-            <Button variant="subtle" marginLeft={{base: 0, sm: "9.75rem"}} w={{base: "full", sm: "auto"}} onClick={onAddNewBaseCase}>
-              <LuPlus />
-            </Button>
-            <Button variant="solid" type="submit">Submit</Button>
-          </VStack>
-          <VStack align="flex-start" w="full" gap="4" css={{ "--field-label-width": "9.375rem" }}>
-            {
-              options.map((option: CategoryOption, index: number) => {
-                return (
-                  ((!option.isMaterial && option.suboptions.length > 0) || (option.isMaterial && option.suboptions.length > 0 && (option as CategoryOption<true>).suboptions.filter((suboption: CategoryMaterialSuboption | undefined) => suboption?.shown).length > 0))
-                  ?
-                  <FieldRoot orientation={{base: "vertical", md: "horizontal"}} key={`option-${option.id}`} alignItems="flex-start">
-                    <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
-                      <Text fontWeight="bold" lineHeight="2.25rem">{option.name}:</Text>
-                    </FieldLabel>
-                    <VStack w="full">
+                      <Stack w="full" direction={{base: "column", md: "row"}}>
+                        <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).quantityPerStyle}>
+                          <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
+                            <Text>Quantity per Style:</Text>
+                          </FieldLabel>
+                          <Controller
+                            name={`cases.${index}.quantityPerStyle`}
+                            control={control}
+                            render={({ field }) => (
+                              <NumberInputRoot
+                                defaultValue={`${field.value}`}
+                                min={1}
+                                bg="bg.panel"
+                                w={{base: "full"}}
+                                clampValueOnBlur={true}
+                                name={field.name}
+                                value={`${field.value}`}
+                                onValueChange={({ valueAsNumber }) => {
+                                  field.onChange(valueAsNumber || 1)
+                                }}
+                              >
+                                <NumberInputControl />
+                                <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">PCS</Text>}>
+                                  <NumberInputInput onBlur={field.onBlur}/>
+                                </InputGroup>
+                              </NumberInputRoot>
+                            )}
+                          />
+                          <FieldErrorText>{(((errors.cases || [])[index] || {}).quantityPerStyle || "") as string}</FieldErrorText>
+                        </FieldRoot>
+                        <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalQuantity}>
+                          <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
+                            <Text>Total Quantity:</Text>
+                          </FieldLabel>
+                          <Controller
+                            name={`cases.${index}.totalQuantity`}
+                            control={control}
+                            render={({ field }) => (
+                              <NumberInputRoot
+                                defaultValue={`${field.value}`}
+                                min={1}
+                                bg="bg.panel"
+                                w={{base: "full"}}
+                                clampValueOnBlur={true}
+                                name={field.name}
+                                value={`${field.value}`}
+                                onValueChange={({ valueAsNumber }) => {
+                                  field.onChange(valueAsNumber || 1)
+                                }}
+                              >
+                                <NumberInputControl />
+                                <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">PCS</Text>}>
+                                  <NumberInputInput onBlur={field.onBlur}/>
+                                </InputGroup>
+                              </NumberInputRoot>
+                            )}
+                          />
+                          <FieldErrorText>{(((errors.cases || [])[index] || {}).totalQuantity || "") as string}</FieldErrorText>
+                        </FieldRoot>
+                      </Stack>
                       {
-                        option.isMaterial
+                        caseFields.length > 1
                         ?
-                        renderMaterialSuboptionArea(option as CategoryOption<true>, index)
+                        <CloseButton size="sm" position="absolute" top={{base: "0", md: "1rem"}} right={{base: "0", md: "1rem"}} onClick={onDeleteBaseCase(index)}/>
                         :
-                        renderNonMaterialSuboptionArea(option as CategoryOption<false>, index)
+                        null
                       }
                     </VStack>
-                  </FieldRoot>
-                  :
-                  null
-                );
-              })
-            }
+                  </Box>
+                ))
+              }
+              <Button variant="subtle" marginLeft={{base: 0, sm: "9.75rem"}} w={{base: "full", sm: "auto"}} onClick={onAddNewBaseCase}>
+                <LuPlus />
+              </Button>
+              <Button variant="solid" type="submit">Submit</Button>
+            </VStack>
+            <VStack align="flex-start" w="full" gap="4" css={{ "--field-label-width": "9.375rem" }}>
+              {
+                options.map((option: CategoryOption, index: number) => {
+                  return (
+                    ((!option.isMaterial && option.suboptions.length > 0) || (option.isMaterial && option.suboptions.length > 0 && (option as CategoryOption<true>).suboptions.filter((suboption: CategoryMaterialSuboption | undefined) => suboption?.shown).length > 0))
+                    ?
+                    <FieldRoot orientation={{base: "vertical", md: "horizontal"}} key={`option-${option.id}`} alignItems="flex-start">
+                      <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
+                        <Text fontWeight="bold" lineHeight="2.25rem">{option.name}:</Text>
+                      </FieldLabel>
+                      <VStack w="full">
+                        {
+                          option.isMaterial
+                          ?
+                          renderMaterialSuboptionArea(option as CategoryOption<true>, index)
+                          :
+                          renderNonMaterialSuboptionArea(option as CategoryOption<false>, index)
+                        }
+                      </VStack>
+                    </FieldRoot>
+                    :
+                    null
+                  );
+                })
+              }
+            </VStack>
           </VStack>
-        </VStack>
+        }
         {
           (formValues?.cases?.length && formValues?.width && formValues?.height)
           ?
@@ -761,6 +771,7 @@ export default function Home() {
                 ))
               }
             </AccordionRoot>
+            <CloseButton hideFrom="md" size="sm" position="absolute" top="1rem" right="1rem" onClick={() => setFormValues(undefined)}/>
           </VStack>
           :
           null
