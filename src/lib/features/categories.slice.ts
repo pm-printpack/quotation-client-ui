@@ -6,6 +6,7 @@ const { get, post } = useRequest();
 interface Category{
   id: number;
   name: string;
+  chineseName: string;
   createdAt: Date;
 };
 

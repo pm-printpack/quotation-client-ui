@@ -7,7 +7,8 @@ import { Fragment, useCallback, useEffect, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
-import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, Size } from "@/lib/features/calculation.slice";
+import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPriceByOffsetPrinting, Size } from "@/lib/features/calculation.slice";
+import CalculationUtil from "./utils/CalculationUtil";
 
 type BaseCaseFormValues = BaseCaseValue;
 
@@ -27,12 +28,13 @@ export default function Home() {
   const productSubcategories: ProductSubcategory[] = useAppSelector((state: RootState) => state.categories.productSubcategories);
   const printingTypes: PrintingType[] = useAppSelector((state: RootState) => state.categories.printingTypes);
   const options: CategoryOption[] = useAppSelector((state: RootState) => state.categories.options);
-  const totalPrice: number = useAppSelector((state: RootState) => state.calculation.totalPrice);
+  const totalPrices: number[] = useAppSelector((state: RootState) => state.calculation.totalPrices);
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
   const [formValues, setFormValues] = useState<FormValues>();
   const [productSubcategoryMenuOpen, setProductSubcategoryMenuOpen] = useState<boolean>(false);
+  const [suggestedSKUs, isSuggestedSKUs] = useState<boolean[]>([]);
   const {
     control,
     handleSubmit,
@@ -190,18 +192,43 @@ export default function Home() {
   }, [selectedOptionRecords]);
 
   const onSubmit = useCallback((values: FormValues) => {
+    isSuggestedSKUs([]);
+    setFormValues(undefined);
     console.log(values);
     console.log("selectedOptionRecords: ", selectedOptionRecords);
-    setFormValues(values);
-     if (values) {
-      dispatch(calculateTotalPriceByDigitalPrinting({
-        width: values.width,
-        height: values.height,
-        baseCase: values.cases[0],
-        options: Object.values(selectedOptionRecords)
-      }));
+    if (values) {
+      const selectedPrintingType: PrintingType | undefined = printingTypes.find((printingType: PrintingType) => printingType.id === selectedPrintingTypeId)
+      if (!selectedPrintingType) {
+        return;
+      }
+      if (selectedPrintingType.name.toLowerCase() === "digital printing") {
+        dispatch(calculateTotalPriceByDigitalPrinting({
+          width: values.width,
+          height: values.height,
+          cases: values.cases,
+          options: Object.values(selectedOptionRecords)
+        }));
+      } else if (selectedPrintingType.name.toLowerCase() === "offset printing") {
+        const {numOfMatchedModulus} = CalculationUtil.calculateNumOfMatchedModulus(values.width, values.height, Object.values(selectedOptionRecords));
+        const suggests: boolean[] = values.cases.map((baseCase: BaseCaseFormValues): boolean => (
+          Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) * numOfMatchedModulus !== (baseCase.numOfStyles || 0)
+        ));
+        isSuggestedSKUs(suggests);
+        if (suggests.find((suggestedSKU: boolean) => suggestedSKU)) {
+          return;
+        }
+        dispatch(calculateTotalPriceByOffsetPrinting({
+          width: values.width,
+          height: values.height,
+          cases: values.cases,
+          options: Object.values(selectedOptionRecords)
+        }));
+      } else if (selectedPrintingType.name.toLowerCase() === "gravure printing") {
+
+      }
     }
-  }, [selectedOptionRecords]);
+    setFormValues(values);
+  }, [printingTypes, selectedPrintingTypeId, selectedOptionRecords]);
 
   const onSelectedProductSubcategoryChange = useCallback(({value}: {value: string}) => setSelectedProductSubcategoryId(Number(value)), []);
 
@@ -389,7 +416,7 @@ export default function Home() {
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Product Quotation</DataListItemLabel>
-          <DataListItemValue justifyContent="flex-end">{totalPrice || "-"}</DataListItemValue>
+          <DataListItemValue justifyContent="flex-end">{totalPrices[index] || "-"}</DataListItemValue>
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Estimated Weight</DataListItemLabel>
@@ -593,7 +620,7 @@ export default function Home() {
                         animationDuration: "120ms"
                       }}
                     >
-                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="full" invalid={!!((errors.cases || [])[index] || {}).numOfStyles}>
+                      <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="full" invalid={suggestedSKUs[index] || !!((errors.cases || [])[index] || {}).numOfStyles}>
                         <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
                           <Text textAlign="right">Number of Styles in the Same Size:</Text>
                         </FieldLabel>
@@ -618,7 +645,14 @@ export default function Home() {
                             </NumberInputRoot>
                           )}
                         />
-                        <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfStyles || "") as string}</FieldErrorText>
+                        {
+                          suggestedSKUs[index]
+                          ?
+                          <FieldErrorText>The optimal SKU count for the current size is a multiple of the matched modulus. Consider increasing or decreasing the SKU count for better efficiency.</FieldErrorText> 
+                          :
+                          null
+                        }
+                        <FieldErrorText>{(((errors.cases || [])[index] || {}).numOfStyles?.message || "") as string}</FieldErrorText>
                       </FieldRoot>
                       <Stack w="full" direction={{base: "column", md: "row"}}>
                         <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).quantityPerStyle}>
@@ -648,7 +682,7 @@ export default function Home() {
                               </NumberInputRoot>
                             )}
                           />
-                          <FieldErrorText>{(((errors.cases || [])[index] || {}).quantityPerStyle || "") as string}</FieldErrorText>
+                          <FieldErrorText>{(((errors.cases || [])[index] || {}).quantityPerStyle?.message || "") as string}</FieldErrorText>
                         </FieldRoot>
                         <FieldRoot orientation={{base: "vertical", sm: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!((errors.cases || [])[index] || {}).totalQuantity}>
                           <FieldLabel alignSelf="center" justifyContent={{base: "flex-start", sm: "flex-end"}} w={{base: "full"}}>
@@ -677,7 +711,7 @@ export default function Home() {
                               </NumberInputRoot>
                             )}
                           />
-                          <FieldErrorText>{(((errors.cases || [])[index] || {}).totalQuantity || "") as string}</FieldErrorText>
+                          <FieldErrorText>{(((errors.cases || [])[index] || {}).totalQuantity?.message || "") as string}</FieldErrorText>
                         </FieldRoot>
                       </Stack>
                       {
