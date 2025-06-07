@@ -1,5 +1,7 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { CategoryMaterialSuboption, CategoryOption, CategorySuboption } from "./categories.slice";
+import { ActionReducerMapBuilder, createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { CategoryMaterialSuboption, CategoryOption, CategorySuboption, ProductSubcategory } from "./categories.slice";
+import CalculationUtil from "@/app/utils/CalculationUtil";
+import { RootState } from "../store";
 
 interface CalculationState {
   loading: boolean;
@@ -22,11 +24,116 @@ export type Size = {
   height: number;
 };
 
+type TotalPriceCalculationParams = Size & { cases: BaseCaseValue[]; options: CategoryOption<boolean>[]; };
+
+export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], TotalPriceCalculationParams & { selectedProductSubcategoryId: number }>(
+  "calculation/calculateTotalPriceByGravurePrinting",
+  async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
+    const { width, height, cases, options, selectedProductSubcategoryId } = params;
+    const totalPrices: number[] = [];
+    for (const baseCase of cases) {
+      // Material Cost
+      const printingLengthPerPackage: number = (width + 2.5) * 2;
+      const customShaped: boolean = CalculationUtil.isCustomShaped(options);
+      const materialWidth: number = customShaped ? (height + 20) * 2 : (height + 10) * 2;
+      let materialArea: number = (printingLengthPerPackage * materialWidth * baseCase.totalQuantity) / 1000000;
+      let totalMaterialUnitPrice: number = 0;
+      for (let i: number = 0; i < options.length; ++i) {
+        const option: CategoryOption = options[i];
+        if (option.isMaterial) {
+          const materialSuboptions: (CategoryMaterialSuboption | undefined)[] = (option as CategoryOption<true>).suboptions;
+          for (let j: number = 0; j < materialSuboptions.length; ++j) {
+            // totalUnitPrice += suboptions[j].unitPrice;
+            const materialSuboption: CategoryMaterialSuboption | undefined = materialSuboptions[j];
+            if (materialSuboption) {
+              const suboptions: CategorySuboption[] = materialSuboption.suboptions;
+              for (let n: number = 0; n < suboptions.length; ++n) {
+                totalMaterialUnitPrice += suboptions[n].unitPrice;
+              }
+            }
+          }
+        }
+      }
+      const materialCost: number = materialArea * totalMaterialUnitPrice;
+
+      // Printing Cost
+      let totalUnitPrice: number = 0;
+      for (let i: number = 0; i < options.length; ++i) {
+        const option: CategoryOption = options[i];
+        if (!option.isMaterial && ["color", "production process"].includes(option.name.toLocaleLowerCase())) {
+          const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+          for (let j: number = 0; j < suboptions.length; ++j) {
+            totalUnitPrice += suboptions[j].unitPrice;
+          }
+        }
+      }
+      const printingCost: number = materialArea * totalUnitPrice;
+
+      // Composite Processing Fee
+      let numOfLaminationLayers: number = 0;
+      const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "layer material")[0];
+      if (laminationLayerOption) {
+        numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialSuboption: CategoryMaterialSuboption | undefined) => !!materialSuboption).length;
+      }
+      const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
+
+      // Bag Making Cost
+      const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
+      const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)[0];
+      let totalProductionProcessUnitPrice: number = 0;
+      for (let i: number = 0; i < options.length; ++i) {
+        const option: CategoryOption = options[i];
+        if (!option.isMaterial && option.name.toLocaleLowerCase() === "production process") {
+          for (let j: number = 0; j < option.suboptions.length; ++j) {
+            const suboption: CategorySuboption = (option as CategoryOption<false>).suboptions[j];
+            if (["spout", "valve"].includes(suboption.name.toLocaleLowerCase())) {
+              totalProductionProcessUnitPrice += suboption.unitPrice;
+            }
+          }
+        }
+      }
+      let bagMakingCost: number = 0;
+      const selectedZipperSuboption: CategorySuboption | undefined = CalculationUtil.getSelectedZipperSuboption(options);
+      const isSelectedsquareBottomBag: boolean = selectedProductSubcategory && selectedProductSubcategory.name.toLocaleLowerCase() === "square bottom bag";
+      if (isSelectedsquareBottomBag) {
+        if (!selectedZipperSuboption || selectedZipperSuboption.name.toLocaleLowerCase() === "no zipper") {
+          bagMakingCost = 0.5 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPrice;
+        } else {
+          bagMakingCost = 0.6 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPrice;
+        }
+      } else {
+        bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPrice || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPrice;
+      }
+
+      // Plate Fee
+      let numOfPlate: number = 0;
+      for (let i: number = 0; i < options.length; ++i) {
+        const option: CategoryOption = options[i];
+        if (!option.isMaterial && ["color", "production process"].includes(option.name.toLocaleLowerCase())) {
+          // const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+          numOfPlate += ((option as CategoryOption<false>).suboptions || []).filter((suboption: CategorySuboption) => !!suboption).length;
+        }
+      }
+      const plateFee: number = numOfPlate * 450;
+
+      // Packaging Cost
+      const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
+
+      if (isSelectedsquareBottomBag) {
+        totalPrices.push(1.55 * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost);
+      } else {
+        totalPrices.push(1.35 * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost);
+      }
+    }
+    return totalPrices;
+  }
+);
+
 export const calculationSlice = createSlice({
   name: "calculation",
   initialState: initialState,
   reducers: {
-    calculateTotalPriceByDigitalPrinting: (state: CalculationState, action: PayloadAction<Size & { cases: BaseCaseValue[] } & { options: CategoryOption<boolean>[] }>) => {
+    calculateTotalPriceByDigitalPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams>) => {
       const { width, height, cases, options } = action.payload;
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
@@ -74,12 +181,7 @@ export const calculationSlice = createSlice({
 
         // Bag Making Cost
         let bagMakingCost: number = 0;
-        let customShaped: boolean = false;
-        const productionProcessOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "production process")[0];
-        if (productionProcessOption) {
-          const suboptions: CategorySuboption[] = (productionProcessOption as CategoryOption<false>).suboptions;
-          customShaped = suboptions.filter((suboption: CategorySuboption) => suboption.name.toLocaleLowerCase() === "special shape").length > 0;
-        }
+        const customShaped: boolean = CalculationUtil.isCustomShaped(options);
         const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "zipper type")[0];
         const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLocaleLowerCase();
         if (customShaped) {
@@ -106,7 +208,7 @@ export const calculationSlice = createSlice({
       }
       state.totalPrices = totalPrices;
     },
-    calculateTotalPriceByOffsetPrinting: (state: CalculationState, action: PayloadAction<Size & { cases: BaseCaseValue[] } & { options: CategoryOption<boolean>[] }>) => {
+    calculateTotalPriceByOffsetPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams>) => {
       const { width, height, cases, options } = action.payload;
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
@@ -121,12 +223,7 @@ export const calculationSlice = createSlice({
         }
         
         // Material Cost
-        let customShaped: boolean = false;
-        const productionProcessOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "production process")[0];
-        if (productionProcessOption) {
-          const suboptions: CategorySuboption[] = (productionProcessOption as CategoryOption<false>).suboptions;
-          customShaped = suboptions.filter((suboption: CategorySuboption) => suboption.name.toLocaleLowerCase() === "special shape").length > 0;
-        }
+        const customShaped: boolean = CalculationUtil.isCustomShaped(options);
         let printingWidth: number = 0;
         if (customShaped) {
           printingWidth = (height + 10) * 2 + 10 + 14;
@@ -207,6 +304,11 @@ export const calculationSlice = createSlice({
       }
       state.totalPrices = totalPrices;
     }
+  },
+  extraReducers: (builder: ActionReducerMapBuilder<CalculationState>) => {
+    builder.addCase(calculateTotalPriceByGravurePrinting.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
+      state.totalPrices = action.payload;
+    });
   }
 });
 

@@ -19,6 +19,20 @@ const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
 ];
 
 export default {
+  isCustomShaped: (options: CategoryOption[]): boolean => {
+    const productionProcessOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "production process")[0];
+    if (productionProcessOption) {
+      const suboptions: CategorySuboption[] = (productionProcessOption as CategoryOption<false>).suboptions;
+      return suboptions.filter((suboption: CategorySuboption) => suboption.name.toLocaleLowerCase() === "special shape").length > 0;
+    }
+    return false;
+  },
+
+  getSelectedZipperSuboption: (options: CategoryOption[]): CategorySuboption | undefined => {
+    const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "zipper type")[0];
+    return (zipperTypeOption as CategoryOption<false>)?.suboptions[0];
+  },
+
   /**
    * 【袋子印刷长度范围】：异形：袋宽+10-20mm；非异形：袋宽+5-15mm
    * 【匹配模数】：按照最接近的尺寸在版辊表里匹配，从小增量优先

@@ -3,18 +3,21 @@ import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptio
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
 import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, ListItem, ListRoot, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackProps, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, Ref, RefObject, useCallback, useEffect, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
-import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPriceByOffsetPrinting, Size } from "@/lib/features/calculation.slice";
+import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPriceByGravurePrinting, calculateTotalPriceByOffsetPrinting, Size } from "@/lib/features/calculation.slice";
 import CalculationUtil from "./utils/CalculationUtil";
+import { useDebouncedCallback } from "use-debounce";
 
 type BaseCaseFormValues = BaseCaseValue;
 
 type FormValues = Size & {
   cases: BaseCaseFormValues[];
 };
+
+const DEBOUNCED_WAIT_TIME: number = 250; // ms
 
 export default function Home() {
   const isAuthenticated: boolean = useAppSelector((state: RootState) => state.auth.isAuthenticated);
@@ -38,7 +41,9 @@ export default function Home() {
   const {
     control,
     handleSubmit,
-    formState: { errors }
+    formState: { errors },
+    getValues,
+    setValue
   } = useForm<FormValues>({
     defaultValues: {
       width: 1,
@@ -46,7 +51,7 @@ export default function Home() {
       cases: [{
         numOfStyles: 1,
         quantityPerStyle: 100,
-        totalQuantity: 1000
+        totalQuantity: 100
       }]
     }
   });
@@ -63,6 +68,18 @@ export default function Home() {
     dispatch(fetchAllProductSubcategories());
     dispatch(fetchAllPrintingTypes());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!selectedProductSubcategoryId && productSubcategories.length > 0) {
+      setSelectedProductSubcategoryId(productSubcategories[0].id);
+    }
+  }, [productSubcategories, selectedProductSubcategoryId]);
+
+  useEffect(() => {
+    if (!selectedPrintingTypeId && printingTypes.length > 0) {
+      setSelectedPrintingTypeId(printingTypes[0].id);
+    }
+  }, [printingTypes, selectedPrintingTypeId]);
 
   useEffect(() => {
     if (!selectedProductSubcategoryId) {
@@ -89,7 +106,7 @@ export default function Home() {
     appendCase({
       numOfStyles: 1,
       quantityPerStyle: 100,
-      totalQuantity: 1000
+      totalQuantity: 100
     });
   }, [appendCase]);
 
@@ -120,6 +137,58 @@ export default function Home() {
       }
     };
   }, [selectedOptionRecords]);
+
+  const onSubmit = useCallback((values: FormValues) => {
+    isSuggestedSKUs([]);
+    setFormValues(undefined);
+    console.log(values);
+    console.log("selectedOptionRecords: ", selectedOptionRecords);
+    console.log("selectedPrintingTypeId: ", selectedPrintingTypeId);
+    if (values) {
+      const selectedPrintingType: PrintingType | undefined = printingTypes.find((printingType: PrintingType) => printingType.id === selectedPrintingTypeId)
+      if (!selectedPrintingType) {
+        return;
+      }
+      if (selectedPrintingType.name.toLowerCase() === "digital printing") {
+        dispatch(calculateTotalPriceByDigitalPrinting({
+          width: values.width,
+          height: values.height,
+          cases: values.cases,
+          options: Object.values(selectedOptionRecords)
+        }));
+      } else if (selectedPrintingType.name.toLowerCase() === "offset printing") {
+        const {numOfMatchedModulus} = CalculationUtil.calculateNumOfMatchedModulus(values.width, values.height, Object.values(selectedOptionRecords));
+        const suggests: boolean[] = values.cases.map((baseCase: BaseCaseFormValues): boolean => (
+          Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) * numOfMatchedModulus !== (baseCase.numOfStyles || 0)
+        ));
+        isSuggestedSKUs(suggests);
+        if (suggests.find((suggestedSKU: boolean) => suggestedSKU)) {
+          return;
+        }
+        dispatch(calculateTotalPriceByOffsetPrinting({
+          width: values.width,
+          height: values.height,
+          cases: values.cases,
+          options: Object.values(selectedOptionRecords)
+        }));
+      } else if (selectedPrintingType.name.toLowerCase() === "gravure printing") {
+        dispatch(calculateTotalPriceByGravurePrinting({
+          width: values.width,
+          height: values.height,
+          cases: values.cases,
+          options: Object.values(selectedOptionRecords),
+          selectedProductSubcategoryId: selectedProductSubcategoryId
+        }));
+      }
+    }
+    setFormValues(values);
+  }, [selectedProductSubcategoryId, printingTypes, selectedPrintingTypeId, selectedOptionRecords]);
+
+  useEffect(useDebouncedCallback(() => {
+    if (!isMobile) {
+      handleSubmit(onSubmit)();
+    }
+  }, DEBOUNCED_WAIT_TIME), [onSubmit, isMobile]);
 
   const getSelectedValueOfMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number): string | undefined => {
     const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
@@ -164,8 +233,11 @@ export default function Home() {
           setSelectedOptionRecords({...selectedOptionRecords});
         }
       }
+      if (!isMobile) {
+        handleSubmit(onSubmit)();
+      }
     };
-  }, [selectedOptionRecords]);
+  }, [selectedOptionRecords, handleSubmit, onSubmit, isMobile]);
 
   const getSelectedValueOfNonMaterialSuboption = useCallback((option: CategoryOption<false>): string | undefined => {
     const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
@@ -188,51 +260,19 @@ export default function Home() {
         selectedOptionRecords[option.id].suboptions = option.suboptions.filter((suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId));
         setSelectedOptionRecords({...selectedOptionRecords});
       }
+      if (!isMobile) {
+        handleSubmit(onSubmit)();
+      }
     };
-  }, [selectedOptionRecords]);
+  }, [selectedOptionRecords, handleSubmit, onSubmit, isMobile]);
 
-  const onSubmit = useCallback((values: FormValues) => {
-    isSuggestedSKUs([]);
-    setFormValues(undefined);
-    console.log(values);
-    console.log("selectedOptionRecords: ", selectedOptionRecords);
-    if (values) {
-      const selectedPrintingType: PrintingType | undefined = printingTypes.find((printingType: PrintingType) => printingType.id === selectedPrintingTypeId)
-      if (!selectedPrintingType) {
-        return;
-      }
-      if (selectedPrintingType.name.toLowerCase() === "digital printing") {
-        dispatch(calculateTotalPriceByDigitalPrinting({
-          width: values.width,
-          height: values.height,
-          cases: values.cases,
-          options: Object.values(selectedOptionRecords)
-        }));
-      } else if (selectedPrintingType.name.toLowerCase() === "offset printing") {
-        const {numOfMatchedModulus} = CalculationUtil.calculateNumOfMatchedModulus(values.width, values.height, Object.values(selectedOptionRecords));
-        const suggests: boolean[] = values.cases.map((baseCase: BaseCaseFormValues): boolean => (
-          Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) * numOfMatchedModulus !== (baseCase.numOfStyles || 0)
-        ));
-        isSuggestedSKUs(suggests);
-        if (suggests.find((suggestedSKU: boolean) => suggestedSKU)) {
-          return;
-        }
-        dispatch(calculateTotalPriceByOffsetPrinting({
-          width: values.width,
-          height: values.height,
-          cases: values.cases,
-          options: Object.values(selectedOptionRecords)
-        }));
-      } else if (selectedPrintingType.name.toLowerCase() === "gravure printing") {
+  const onSelectedProductSubcategoryChange = useCallback(({value}: {value: string}) => {
+    setSelectedProductSubcategoryId(Number(value));
+  }, []);
 
-      }
-    }
-    setFormValues(values);
-  }, [printingTypes, selectedPrintingTypeId, selectedOptionRecords]);
-
-  const onSelectedProductSubcategoryChange = useCallback(({value}: {value: string}) => setSelectedProductSubcategoryId(Number(value)), []);
-
-  const onSelectedPrintingTypeChange = useCallback(({value}: {value: string}) => setSelectedPrintingTypeId(Number(value)), []);
+  const onSelectedPrintingTypeChange = useCallback(({value}: {value: string}) => {
+    setSelectedPrintingTypeId(Number(value));
+  }, []);
 
   const renderMaterialSuboptionArea = useCallback((option: CategoryOption<true>, index: number) => {
     return (
@@ -324,7 +364,7 @@ export default function Home() {
         }
       </VStack>
     );
-  }, []);
+  }, [setSelectedValueOfMaterialSuboption]);
 
   const renderNonMaterialSuboptionArea = useCallback((option: CategoryOption<false>, index: number) => {
     return (
@@ -351,7 +391,7 @@ export default function Home() {
         </SimpleGrid>
       </RadioCardRoot>
     );
-  }, []);
+  }, [setSelectedValueOfNonMaterialSuboption]);
 
   const onCategoryProductSubcategoryMenuItemClick = useCallback((categoryProductSubcategoryId: number) => {
     return () => {
@@ -416,7 +456,15 @@ export default function Home() {
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Product Quotation</DataListItemLabel>
-          <DataListItemValue justifyContent="flex-end">{totalPrices[index] || "-"}</DataListItemValue>
+          <DataListItemValue justifyContent="flex-end">
+            {
+              totalPrices[index]
+              ?
+              new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(totalPrices[index])
+              :
+              "-"
+            }
+          </DataListItemValue>
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Estimated Weight</DataListItemLabel>
@@ -558,9 +606,12 @@ export default function Home() {
                         clampValueOnBlur={true}
                         name={field.name}
                         value={`${field.value}`}
-                        onValueChange={({ valueAsNumber }) => {
-                          field.onChange(valueAsNumber || 1)
-                        }}
+                        onValueChange={useDebouncedCallback(({ valueAsNumber }) => {
+                          field.onChange(valueAsNumber || 1);
+                          if (!isMobile) {
+                            handleSubmit(onSubmit)();
+                          }
+                        }, DEBOUNCED_WAIT_TIME)}
                       >
                         <NumberInputControl />
                         <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
@@ -585,9 +636,12 @@ export default function Home() {
                         clampValueOnBlur={true}
                         name={field.name}
                         value={`${field.value}`}
-                        onValueChange={({ valueAsNumber }) => {
-                          field.onChange(valueAsNumber || 1)
-                        }}
+                        onValueChange={useDebouncedCallback(({ valueAsNumber }) => {
+                          field.onChange(valueAsNumber || 1);
+                          if (!isMobile) {
+                            handleSubmit(onSubmit)();
+                          }
+                        }, DEBOUNCED_WAIT_TIME)}
                       >
                         <NumberInputControl />
                         <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
@@ -636,9 +690,13 @@ export default function Home() {
                               clampValueOnBlur={true}
                               name={field.name}
                               value={`${field.value}`}
-                              onValueChange={({ valueAsNumber }) => {
+                              onValueChange={useDebouncedCallback(({ valueAsNumber }) => {
                                 field.onChange(valueAsNumber || 1);
-                              }}
+                                setValue(`cases.${index}.totalQuantity`, getValues(`cases.${index}.numOfStyles`) * getValues(`cases.${index}.quantityPerStyle`));
+                                if (!isMobile) {
+                                  handleSubmit(onSubmit)();
+                                }
+                              }, DEBOUNCED_WAIT_TIME)}
                             >
                               <NumberInputControl />
                               <NumberInputInput onBlur={field.onBlur}/>
@@ -671,9 +729,13 @@ export default function Home() {
                                 clampValueOnBlur={true}
                                 name={field.name}
                                 value={`${field.value}`}
-                                onValueChange={({ valueAsNumber }) => {
-                                  field.onChange(valueAsNumber || 1)
-                                }}
+                                onValueChange={useDebouncedCallback(({ valueAsNumber }) => {
+                                  field.onChange(valueAsNumber || 1);
+                                  setValue(`cases.${index}.totalQuantity`, getValues(`cases.${index}.numOfStyles`) * getValues(`cases.${index}.quantityPerStyle`));
+                                  if (!isMobile) {
+                                    handleSubmit(onSubmit)();
+                                  }
+                                }, DEBOUNCED_WAIT_TIME)}
                               >
                                 <NumberInputControl />
                                 <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">PCS</Text>}>
@@ -700,9 +762,7 @@ export default function Home() {
                                 clampValueOnBlur={true}
                                 name={field.name}
                                 value={`${field.value}`}
-                                onValueChange={({ valueAsNumber }) => {
-                                  field.onChange(valueAsNumber || 1)
-                                }}
+                                disabled
                               >
                                 <NumberInputControl />
                                 <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">PCS</Text>}>
@@ -728,7 +788,6 @@ export default function Home() {
               <Button variant="subtle" marginLeft={{base: 0, sm: "9.75rem"}} w={{base: "full", sm: "auto"}} onClick={onAddNewBaseCase}>
                 <LuPlus />
               </Button>
-              <Button variant="solid" type="submit">Submit</Button>
             </VStack>
             <VStack align="flex-start" w="full" gap="4" css={{ "--field-label-width": "9.375rem" }}>
               {
@@ -756,6 +815,9 @@ export default function Home() {
                 })
               }
             </VStack>
+            <Box p="16" w="full">
+              <Button variant="solid" hideFrom="md" w="full" type="submit">Submit</Button>
+            </Box>
           </VStack>
         }
         {

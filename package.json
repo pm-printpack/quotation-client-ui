@@ -21,7 +21,8 @@
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.56.4",
     "react-icons": "^5.5.0",
-    "react-redux": "^9.2.0"
+    "react-redux": "^9.2.0",
+    "use-debounce": "^10.0.4"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^19.8.1",
