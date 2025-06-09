@@ -3,13 +3,14 @@ import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptio
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
 import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, ListItem, ListRoot, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackProps, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
-import { Fragment, Ref, RefObject, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
 import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPriceByGravurePrinting, calculateTotalPriceByOffsetPrinting, Size } from "@/lib/features/calculation.slice";
 import CalculationUtil from "./utils/CalculationUtil";
 import { useDebouncedCallback } from "use-debounce";
+import { fetchExchangeRate } from "@/lib/features/environment.slice";
 
 type BaseCaseFormValues = BaseCaseValue;
 
@@ -32,6 +33,7 @@ export default function Home() {
   const printingTypes: PrintingType[] = useAppSelector((state: RootState) => state.categories.printingTypes);
   const options: CategoryOption[] = useAppSelector((state: RootState) => state.categories.options);
   const totalPrices: number[] = useAppSelector((state: RootState) => state.calculation.totalPrices);
+  const exchangeRate: number | undefined = useAppSelector((state: RootState) => state.env.exchangeRate?.rate);
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
@@ -65,6 +67,7 @@ export default function Home() {
   });
 
   useEffect(() => {
+    dispatch(fetchExchangeRate());
     dispatch(fetchAllProductSubcategories());
     dispatch(fetchAllPrintingTypes());
   }, [dispatch]);
@@ -460,7 +463,13 @@ export default function Home() {
             {
               totalPrices[index]
               ?
-              new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(totalPrices[index])
+              (
+                exchangeRate
+                ?
+                new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(totalPrices[index] / exchangeRate)
+                :
+                new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY" }).format(totalPrices[index])
+              )
               :
               "-"
             }
@@ -470,9 +479,13 @@ export default function Home() {
           <DataListItemLabel>Estimated Weight</DataListItemLabel>
           <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
         </DataListItem>
-        <DataListItem>
+        <DataListItem alignItems="flex-start">
           <DataListItemLabel>Estimated Delivery Time</DataListItemLabel>
-          <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
+          <DataListItemValue justifyContent="flex-end">
+            Air Freight: 10–15 days
+            <br />
+            Sea Freight: 18–22 days
+          </DataListItemValue>
         </DataListItem>
       </DataListRoot>
     );
