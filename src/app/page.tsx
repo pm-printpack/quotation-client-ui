@@ -1,13 +1,13 @@
 "use client";
-import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1 } from "@/lib/features/categories.slice";
+import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1, CategorySuboptionByWeight } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
-import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, ListItem, ListRoot, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackProps, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
+import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
-import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPriceByGravurePrinting, calculateTotalPriceByOffsetPrinting, Size } from "@/lib/features/calculation.slice";
+import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPriceByGravurePrinting, calculateTotalPriceByOffsetPrinting, calculateTotalWeight, Size } from "@/lib/features/calculation.slice";
 import CalculationUtil from "./utils/CalculationUtil";
 import { useDebouncedCallback } from "use-debounce";
 import { fetchExchangeRate } from "@/lib/features/environment.slice";
@@ -33,6 +33,7 @@ export default function Home() {
   const printingTypes: PrintingType[] = useAppSelector((state: RootState) => state.categories.printingTypes);
   const options: CategoryOption[] = useAppSelector((state: RootState) => state.categories.options);
   const totalPrices: number[] = useAppSelector((state: RootState) => state.calculation.totalPrices);
+  const totalWeights: number[] = useAppSelector((state: RootState) => state.calculation.totalWeights);
   const exchangeRate: number | undefined = useAppSelector((state: RootState) => state.env.exchangeRate?.rate);
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
@@ -183,6 +184,13 @@ export default function Home() {
           selectedProductSubcategoryId: selectedProductSubcategoryId
         }));
       }
+      dispatch(calculateTotalWeight({
+        width: values.width,
+        height: values.height,
+        cases: values.cases,
+        options: Object.values(selectedOptionRecords),
+        selectedProductSubcategoryId: selectedProductSubcategoryId
+      }));
     }
     setFormValues(values);
   }, [selectedProductSubcategoryId, printingTypes, selectedPrintingTypeId, selectedOptionRecords]);
@@ -224,7 +232,7 @@ export default function Home() {
           };
         }
         if (materialSuboption && materialSuboption.shown) {
-          const selectedSuboption: CategorySuboption | undefined = materialSuboption.suboptions.find((suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId));
+          const selectedSuboption: CategorySuboptionByWeight | undefined = materialSuboption.suboptions.find((suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId));
           if (selectedSuboption) {
             const selectedMaterialSuboption: CategoryMaterialSuboption | undefined = (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions[materialSuboptionIndex];
             if (selectedMaterialSuboption) {
@@ -477,7 +485,15 @@ export default function Home() {
         </DataListItem>
         <DataListItem>
           <DataListItemLabel>Estimated Weight</DataListItemLabel>
-          <DataListItemValue justifyContent="flex-end">...</DataListItemValue>
+          <DataListItemValue justifyContent="flex-end">
+            {
+              totalWeights[index]
+              ?
+              new Intl.NumberFormat("en-US", { style: "unit", unit: "kilogram", unitDisplay: "short" }).format(totalWeights[index])
+              :
+              "-"
+            }
+          </DataListItemValue>
         </DataListItem>
         <DataListItem alignItems="flex-start">
           <DataListItemLabel>Estimated Delivery Time</DataListItemLabel>

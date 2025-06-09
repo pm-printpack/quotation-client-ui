@@ -1,7 +1,7 @@
 import { useRequest } from "@/hooks/useRequest";
 import { ActionReducerMapBuilder, createAsyncThunk, createSlice, PayloadAction, SerializedError } from "@reduxjs/toolkit";
 
-const { get, post } = useRequest();
+const { get } = useRequest();
 
 interface Category{
   id: number;
@@ -17,7 +17,7 @@ export interface PrintingType extends Category {}
 export interface CategoryMaterialSuboption {
   id: number;
   shown: boolean;
-  suboptions: CategorySuboption[];
+  suboptions: CategorySuboptionByWeight[];
 }
 
 export interface CategoryOption<T extends boolean = boolean> extends Category {
@@ -27,11 +27,16 @@ export interface CategoryOption<T extends boolean = boolean> extends Category {
 
 interface CategoryOptionFromService<T extends boolean = boolean> extends Category {
   isMaterial: T;
-  suboptions: T extends true ? CategorySuboption[][] : CategorySuboption[];
+  suboptions: T extends true ? CategorySuboptionByWeight[][] : CategorySuboption[];
 }
 
 export interface CategorySuboption extends Category {
   unitPrice: number;
+}
+
+export interface CategorySuboptionByWeight extends CategorySuboption {
+  density: number;
+  thickness: number;
 }
 
 interface CategoriesState {
@@ -140,7 +145,7 @@ export const categoriesSlice = createSlice({
         if (option.isMaterial) {
           return {
             ...option,
-            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: CategorySuboption[] | null, index: number): CategoryMaterialSuboption => {
+            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: CategorySuboptionByWeight[] | null, index: number): CategoryMaterialSuboption => {
               if (!suboptions) {
                 return {
                   id: index,

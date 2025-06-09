@@ -6,11 +6,13 @@ import { RootState } from "../store";
 interface CalculationState {
   loading: boolean;
   totalPrices: number[];
+  totalWeights: number[];
 }
 
 const initialState: CalculationState = {
   loading: false,
   totalPrices: [0],
+  totalWeights: [0]
 };
 
 export type BaseCaseValue = {
@@ -25,6 +27,7 @@ export type Size = {
 };
 
 type TotalPriceCalculationParams = Size & { cases: BaseCaseValue[]; options: CategoryOption<boolean>[]; };
+type TotalWeightCalculationParams = TotalPriceCalculationParams;
 
 export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], TotalPriceCalculationParams & { selectedProductSubcategoryId: number }>(
   "calculation/calculateTotalPriceByGravurePrinting",
@@ -126,6 +129,57 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       }
     }
     return totalPrices;
+  }
+);
+
+export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalculationParams & { selectedProductSubcategoryId: number }>(
+  "calculation/calculateTotalWeight",
+  async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
+    const { width, height, cases, options, selectedProductSubcategoryId } = params;
+    const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
+    const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)[0];
+    if (selectedProductSubcategory) {
+      let surfaceDensity: number = 0;
+      for (const option of options) {
+        if (option.isMaterial) {
+          for (const materialSuboption of (option as CategoryOption<true>).suboptions) {
+            if (materialSuboption) {
+              for (const suboption of materialSuboption.suboptions) {
+                surfaceDensity += suboption.density * suboption.thickness;
+              }
+            }
+          }
+        }
+      }
+      const totalWeights: number[] = [];
+      for (const baseCase of cases) {
+        switch(selectedProductSubcategory.name.toLowerCase()) {
+          case "3 side seal bag":
+            totalWeights.push(
+              surfaceDensity / 10000 * baseCase.totalQuantity * (width * height * 2) / 100 / 1000 + baseCase.totalQuantity * 0.003 + Math.ceil(baseCase.totalQuantity / 2000)
+            );
+            break;
+          case "stand-up bag":
+          case "fin seal bag":
+          case "fin seal gusset bag":
+          case "4 side seal bag":
+          case "square bottom bag":
+          case "bag in box":
+          case "film":
+            totalWeights.push(
+              surfaceDensity / 10000 * baseCase.totalQuantity * (width * height * 2) / 100 / 1000 * 1.212 + baseCase.totalQuantity * 0.003 + Math.ceil(baseCase.totalQuantity / 2000)
+            );
+            break;
+          case "spout bag":
+            totalWeights.push(
+              surfaceDensity / 10000 * baseCase.totalQuantity * (width * height * 2) / 100 / 1000 * 1.212 + baseCase.totalQuantity * 0.0036 + Math.ceil(baseCase.totalQuantity / 500)
+            );
+            break;
+        }
+      }
+      return totalWeights;
+    }
+    return cases.map(() => 0);
   }
 );
 
@@ -303,11 +357,14 @@ export const calculationSlice = createSlice({
         totalPrices.push((printingCost + materialPrice + bagMakingCost + dieCuttingCost + laborCost + packagingCost + fileProcessingFee) * 1.08);
       }
       state.totalPrices = totalPrices;
-    }
+    },
   },
   extraReducers: (builder: ActionReducerMapBuilder<CalculationState>) => {
     builder.addCase(calculateTotalPriceByGravurePrinting.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
       state.totalPrices = action.payload;
+    });
+    builder.addCase(calculateTotalWeight.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
+      state.totalWeights = action.payload;
     });
   }
 });
