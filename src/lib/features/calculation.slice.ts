@@ -262,12 +262,12 @@ export const calculationSlice = createSlice({
       }
       state.totalPrices = totalPrices;
     },
-    calculateTotalPriceByOffsetPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams>) => {
-      const { width, height, cases, options } = action.payload;
+    calculateTotalPriceByOffsetPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams & {numOfMatchedModulus: number}>) => {
+      const { width, height, cases, numOfMatchedModulus, options } = action.payload;
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
         // Printing Cost
-        const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / 1) * 1;
+        const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / numOfMatchedModulus) * numOfMatchedModulus;
         const printingLength: number = (width + 10) * baseCase.totalQuantity / baseCase.numOfStyles * numOfSKUs4Printing / 1000 + 250;
         let printingCost: number = 0;
         if (printingLength <= 1000) {

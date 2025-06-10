@@ -166,13 +166,11 @@ export default function Home() {
           Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) * numOfMatchedModulus !== (baseCase.numOfStyles || 0)
         ));
         isSuggestedSKUs(suggests);
-        if (suggests.find((suggestedSKU: boolean) => suggestedSKU)) {
-          return;
-        }
         dispatch(calculateTotalPriceByOffsetPrinting({
           width: values.width,
           height: values.height,
           cases: values.cases,
+          numOfMatchedModulus: numOfMatchedModulus,
           options: Object.values(selectedOptionRecords)
         }));
       } else if (selectedPrintingType.name.toLowerCase() === "gravure printing") {
