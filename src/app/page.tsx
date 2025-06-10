@@ -41,6 +41,7 @@ export default function Home() {
   const [formValues, setFormValues] = useState<FormValues>();
   const [productSubcategoryMenuOpen, setProductSubcategoryMenuOpen] = useState<boolean>(false);
   const [suggestedSKUs, isSuggestedSKUs] = useState<boolean[]>([]);
+  const [numOfMatchedModulus, setNumOfMatchedModulus] = useState<number>();
   const {
     control,
     handleSubmit,
@@ -165,6 +166,7 @@ export default function Home() {
         const suggests: boolean[] = values.cases.map((baseCase: BaseCaseFormValues): boolean => (
           Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) * numOfMatchedModulus !== (baseCase.numOfStyles || 0)
         ));
+        setNumOfMatchedModulus(numOfMatchedModulus);
         isSuggestedSKUs(suggests);
         dispatch(calculateTotalPriceByOffsetPrinting({
           width: values.width,
@@ -642,7 +644,7 @@ export default function Home() {
                       >
                         <NumberInputControl />
                         <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
-                          <NumberInputInput onBlur={field.onBlur}/>
+                          <NumberInputInput onBlur={field.onBlur} placeholder="Width"/>
                         </InputGroup>
                       </NumberInputRoot>
                     )}
@@ -672,7 +674,7 @@ export default function Home() {
                       >
                         <NumberInputControl />
                         <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
-                          <NumberInputInput onBlur={field.onBlur}/>
+                          <NumberInputInput onBlur={field.onBlur} placeholder="Height"/>
                         </InputGroup>
                       </NumberInputRoot>
                     )}
@@ -733,7 +735,7 @@ export default function Home() {
                         {
                           suggestedSKUs[index]
                           ?
-                          <FieldErrorText>The optimal SKU count for the current size is a multiple of the matched modulus. Consider increasing or decreasing the SKU count for better efficiency.</FieldErrorText> 
+                          <FieldErrorText>The optimal SKU count for the current size is a multiple of {numOfMatchedModulus}. Consider increasing or decreasing the SKU count for better efficiency.</FieldErrorText> 
                           :
                           null
                         }
