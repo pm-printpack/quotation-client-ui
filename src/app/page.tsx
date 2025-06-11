@@ -36,6 +36,7 @@ export default function Home() {
   const totalWeights: number[] = useAppSelector((state: RootState) => state.calculation.totalWeights);
   const exchangeRate: number | undefined = useAppSelector((state: RootState) => state.env.exchangeRate?.rate);
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
+  const [hasGusset, setHasGusset] = useState<boolean>(false);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
   const [formValues, setFormValues] = useState<FormValues>();
@@ -75,8 +76,12 @@ export default function Home() {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!selectedProductSubcategoryId && productSubcategories.length > 0) {
-      setSelectedProductSubcategoryId(productSubcategories[0].id);
+    if (productSubcategories.length > 0) {
+      if (selectedProductSubcategoryId) {
+        setHasGusset(productSubcategories.find((productSubcategory: ProductSubcategory | undefined) => productSubcategory?.id === selectedProductSubcategoryId)?.hasGusset || false);
+      } else {
+        setSelectedProductSubcategoryId(productSubcategories[0].id);
+      }
     }
   }, [productSubcategories, selectedProductSubcategoryId]);
 
@@ -85,12 +90,6 @@ export default function Home() {
       setSelectedPrintingTypeId(printingTypes[0].id);
     }
   }, [printingTypes, selectedPrintingTypeId]);
-
-  useEffect(() => {
-    if (!selectedProductSubcategoryId) {
-      setSelectedProductSubcategoryId(productSubcategories[0]?.id);
-    }
-  }, [selectedProductSubcategoryId, productSubcategories]);
 
   useEffect(() => {
     if (!selectedPrintingTypeId) {
@@ -122,6 +121,7 @@ export default function Home() {
         dispatch(calculateTotalPriceByDigitalPrinting({
           width: values.width,
           height: values.height,
+          gusset: values.gusset,
           cases: values.cases,
           options: Object.values(selectedOptionRecords)
         }));
@@ -135,6 +135,7 @@ export default function Home() {
         dispatch(calculateTotalPriceByOffsetPrinting({
           width: values.width,
           height: values.height,
+          gusset: values.gusset,
           cases: values.cases,
           numOfMatchedModulus: numOfMatchedModulus,
           options: Object.values(selectedOptionRecords)
@@ -143,6 +144,7 @@ export default function Home() {
         dispatch(calculateTotalPriceByGravurePrinting({
           width: values.width,
           height: values.height,
+          gusset: values.gusset,
           cases: values.cases,
           options: Object.values(selectedOptionRecords),
           selectedProductSubcategoryId: selectedProductSubcategoryId
@@ -646,6 +648,44 @@ export default function Home() {
                   />
                   <FieldErrorText>{errors.height?.message}</FieldErrorText>
                 </FieldRoot>
+                {
+                  hasGusset
+                  ?
+                  <>
+                    <Text alignSelf={{base: "center"}}>x</Text>
+                    <FieldRoot orientation={{base: "vertical", md: "horizontal"}} justifyContent="flex-start" w="auto" invalid={!!errors.gusset}>
+                    <Controller
+                      name="gusset"
+                      control={control}
+                      render={({ field }) => (
+                        <NumberInputRoot
+                          defaultValue="1"
+                          min={1}
+                          bg="bg.panel"
+                          w={{base: "full"}}
+                          clampValueOnBlur={true}
+                          name={field.name}
+                          value={`${field.value}`}
+                          onValueChange={useDebouncedCallback(({ valueAsNumber }) => {
+                            field.onChange(valueAsNumber || 1);
+                            if (!isMobile) {
+                              handleSubmit(onSubmit)();
+                            }
+                          }, DEBOUNCED_WAIT_TIME)}
+                        >
+                          <NumberInputControl />
+                          <InputGroup endElement={<Text lineHeight="2.5rem" paddingRight="1.5rem">mm</Text>}>
+                            <NumberInputInput onBlur={field.onBlur} placeholder="Gusset"/>
+                          </InputGroup>
+                        </NumberInputRoot>
+                      )}
+                    />
+                    <FieldErrorText>{errors.gusset?.message}</FieldErrorText>
+                  </FieldRoot>
+                  </>
+                  :
+                  null
+                }
               </Stack>
               {
                 caseFields.map((caseField, index: number) => (

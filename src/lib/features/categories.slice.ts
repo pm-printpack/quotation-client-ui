@@ -10,7 +10,9 @@ interface Category{
   createdAt: Date;
 };
 
-export interface ProductSubcategory extends Category {}
+export interface ProductSubcategory extends Category {
+  hasGusset: boolean;
+}
 
 export interface PrintingType extends Category {}
 

@@ -24,6 +24,7 @@ export type BaseCaseValue = {
 export type Size = {
   width: number;
   height: number;
+  gusset?: number;
 };
 
 type TotalPriceCalculationParams = Size & { cases: BaseCaseValue[]; options: CategoryOption<boolean>[]; };
@@ -32,13 +33,13 @@ type TotalWeightCalculationParams = TotalPriceCalculationParams;
 export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], TotalPriceCalculationParams & { selectedProductSubcategoryId: number }>(
   "calculation/calculateTotalPriceByGravurePrinting",
   async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
-    const { width, height, cases, options, selectedProductSubcategoryId } = params;
+    const { width, height, gusset, cases, options, selectedProductSubcategoryId } = params;
     const totalPrices: number[] = [];
     for (const baseCase of cases) {
       // Material Cost
       const printingLengthPerPackage: number = (width + 2.5) * 2;
       const customShaped: boolean = CalculationUtil.isCustomShaped(options);
-      const materialWidth: number = customShaped ? (height + 20) * 2 : (height + 10) * 2;
+      const materialWidth: number = customShaped ? (height + 20) * 2 + (gusset || 0) : (height + 10) * 2 + (gusset || 0);
       let materialArea: number = (printingLengthPerPackage * materialWidth * baseCase.totalQuantity) / 1000000;
       let totalMaterialUnitPrice: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
@@ -188,12 +189,11 @@ export const calculationSlice = createSlice({
   initialState: initialState,
   reducers: {
     calculateTotalPriceByDigitalPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams>) => {
-      const { width, height, cases, options } = action.payload;
+      const { width, height, gusset, cases, options } = action.payload;
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
         // Printing Cost
-        const fullBottomLayout: number = 0;
-        const printingWidth: number = (height + 10) * 2 + fullBottomLayout;
+        const printingWidth: number = (height + 10) * 2 + (gusset || 0);
         const horizontalLayoutCount: number = Math.floor(740 / printingWidth);
         const numOfBagsPerImpression: number = Math.floor(1120 / (width + 5));
         const printingQuantity: number = baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerImpression;
@@ -263,7 +263,7 @@ export const calculationSlice = createSlice({
       state.totalPrices = totalPrices;
     },
     calculateTotalPriceByOffsetPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams & {numOfMatchedModulus: number}>) => {
-      const { width, height, cases, numOfMatchedModulus, options } = action.payload;
+      const { width, height, gusset, cases, numOfMatchedModulus, options } = action.payload;
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
         // Printing Cost
@@ -280,9 +280,9 @@ export const calculationSlice = createSlice({
         const customShaped: boolean = CalculationUtil.isCustomShaped(options);
         let printingWidth: number = 0;
         if (customShaped) {
-          printingWidth = (height + 10) * 2 + 10 + 14;
+          printingWidth = (height + 10) * 2 + (gusset || 0) + 10 + 14;
         } else {
-          printingWidth = (height + 6) * 2 + 6 + 14;
+          printingWidth = (height + 6) * 2 + (gusset || 0) + 6 + 14;
         }
         let materialWidth: number = 0;
         const printingWidthCeil: number = Math.ceil(printingWidth);
