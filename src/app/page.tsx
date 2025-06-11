@@ -472,7 +472,7 @@ export default function Home() {
         </DataListItem>
       </DataListRoot>
     );
-  }, [formValues, selectedOptionRecords]);
+  }, [formValues, selectedOptionRecords, totalWeights]);
 
   return (
     <VStack w="full" h="full" p={{base: "2", md: "4"}} align="flex-start">
