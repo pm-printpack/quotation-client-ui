@@ -22,8 +22,8 @@ export type BaseCaseValue = {
 } & Record<string, number>;
 
 export type Size = {
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   gusset?: number;
 };
 
@@ -34,6 +34,9 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
   "calculation/calculateTotalPriceByGravurePrinting",
   async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
     const { width, height, gusset, cases, options, selectedProductSubcategoryId } = params;
+    if (!width || !height) {
+      return [];
+    }
     const totalPrices: number[] = [];
     for (const baseCase of cases) {
       // Material Cost
@@ -137,6 +140,9 @@ export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalcul
   "calculation/calculateTotalWeight",
   async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
     const { width, height, cases, options, selectedProductSubcategoryId } = params;
+    if (!width || !height) {
+      return cases.map(() => 0);
+    }
     const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
     const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)[0];
     if (selectedProductSubcategory) {
@@ -190,6 +196,10 @@ export const calculationSlice = createSlice({
   reducers: {
     calculateTotalPriceByDigitalPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams>) => {
       const { width, height, gusset, cases, options } = action.payload;
+      if (!width || !height) {
+        state.totalPrices = [];
+        return;
+      }
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
         // Printing Cost
@@ -264,6 +274,10 @@ export const calculationSlice = createSlice({
     },
     calculateTotalPriceByOffsetPrinting: (state: CalculationState, action: PayloadAction<TotalPriceCalculationParams & {numOfMatchedModulus: number}>) => {
       const { width, height, gusset, cases, numOfMatchedModulus, options } = action.payload;
+      if (!width || !height) {
+        state.totalPrices = [];
+        return;
+      }
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
         // Printing Cost

@@ -51,8 +51,6 @@ export default function Home() {
     setValue
   } = useForm<FormValues>({
     defaultValues: {
-      width: 1,
-      height: 1,
       cases: [{
         numOfStyles: 1,
         quantityPerStyle: 100,
@@ -113,6 +111,9 @@ export default function Home() {
     console.log("selectedOptionRecords: ", selectedOptionRecords);
     console.log("selectedPrintingTypeId: ", selectedPrintingTypeId);
     if (values) {
+      if (!values.width || !values.height) {
+        return;
+      }
       const selectedPrintingType: PrintingType | undefined = printingTypes.find((printingType: PrintingType) => printingType.id === selectedPrintingTypeId)
       if (!selectedPrintingType) {
         return;
