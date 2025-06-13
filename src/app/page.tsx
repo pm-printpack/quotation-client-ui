@@ -99,13 +99,9 @@ export default function Home() {
   useEffect(() => {
     const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.find(({id}) => id === selectedProductSubcategoryId);
     if (selectedProductSubcategory && selectedProductSubcategory.name.toLowerCase() === "film") {
-      // const selectedPrintingType: PrintingType | undefined = printingTypes.find(({id}) => id === selectedPrintingTypeId);
-      // if (selectedPrintingType && selectedPrintingType.name.toLowerCase() === "offset printing") {
-      //   // setSelectedPrintingTypeId(printingTypes[0].id);
       setDisplayedPrintingTypes(printingTypes.filter(({name}) => name.toLowerCase() !== "offset printing"));
       setSelectedPrintingTypeId(printingTypes[0].id);
       return;
-      // }
     }
     setDisplayedPrintingTypes(printingTypes);
   }, [productSubcategories, selectedProductSubcategoryId, printingTypes]);
