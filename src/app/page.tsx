@@ -36,6 +36,7 @@ export default function Home() {
   const totalWeights: number[] = useAppSelector((state: RootState) => state.calculation.totalWeights);
   const exchangeRate: number | undefined = useAppSelector((state: RootState) => state.env.exchangeRate?.rate);
   const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] = useState<number>(productSubcategories[0]?.id);
+  const [displayedPrintingTypes, setDisplayedPrintingTypes] = useState<PrintingType[]>([]);
   const [hasGusset, setHasGusset] = useState<boolean>(false);
   const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(printingTypes[0]?.id);
   const [selectedOptionRecords, setSelectedOptionRecords] = useState<Record<number, CategoryOption<boolean>>>([]);
@@ -94,6 +95,20 @@ export default function Home() {
       setSelectedPrintingTypeId(printingTypes[0]?.id);
     }
   }, [selectedPrintingTypeId, printingTypes]);
+  
+  useEffect(() => {
+    const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.find(({id}) => id === selectedProductSubcategoryId);
+    if (selectedProductSubcategory && selectedProductSubcategory.name.toLowerCase() === "film") {
+      // const selectedPrintingType: PrintingType | undefined = printingTypes.find(({id}) => id === selectedPrintingTypeId);
+      // if (selectedPrintingType && selectedPrintingType.name.toLowerCase() === "offset printing") {
+      //   // setSelectedPrintingTypeId(printingTypes[0].id);
+      setDisplayedPrintingTypes(printingTypes.filter(({name}) => name.toLowerCase() !== "offset printing"));
+      setSelectedPrintingTypeId(printingTypes[0].id);
+      return;
+      // }
+    }
+    setDisplayedPrintingTypes(printingTypes);
+  }, [productSubcategories, selectedProductSubcategoryId, printingTypes]);
 
   useEffect(() => {
     if (selectedProductSubcategoryId && selectedPrintingTypeId) {
@@ -557,11 +572,11 @@ export default function Home() {
       >
         <TabsList>
           {
-            printingTypes.map((printingType: PrintingType) => (
+            displayedPrintingTypes.map(useCallback((printingType: PrintingType) => (
               <TabsTrigger value={`${printingType.id}`} key={`printingType-${printingType.id}`}>
                 {printingType.name}
               </TabsTrigger>
-            ))
+            ), []))
           }
         </TabsList>
       </TabsRoot>
