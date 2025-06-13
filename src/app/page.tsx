@@ -11,6 +11,7 @@ import { BaseCaseValue, calculateTotalPriceByDigitalPrinting, calculateTotalPric
 import CalculationUtil from "./utils/CalculationUtil";
 import { useDebouncedCallback } from "use-debounce";
 import { fetchExchangeRate } from "@/lib/features/environment.slice";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type BaseCaseFormValues = BaseCaseValue;
 
@@ -219,7 +220,7 @@ export default function Home() {
     }
   }, DEBOUNCED_WAIT_TIME), [onSubmit, isMobile]);
 
-  const getSelectedValueOfMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number): string | undefined => {
+  const getSelectedValueOfMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number): string | null => {
     const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
     if (selectedOption) {
       const selectedMaterialOption: CategoryOption<true> = selectedOption as CategoryOption<true>;
@@ -228,7 +229,7 @@ export default function Home() {
         return `${selectedMaterialSuboption.suboptions[0].id}`;
       }
     }
-    return undefined;
+    return null;
   }, [selectedOptionRecords]);
 
   const setSelectedValueOfMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number) => {
@@ -268,12 +269,12 @@ export default function Home() {
     };
   }, [selectedOptionRecords, handleSubmit, onSubmit, isMobile]);
 
-  const getSelectedValueOfNonMaterialSuboption = useCallback((option: CategoryOption<false>): string | undefined => {
+  const getSelectedValueOfNonMaterialSuboption = useCallback((option: CategoryOption<false>): string | null => {
     const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
     if (selectedOption) {
       return `${(selectedOption as CategoryOption<false>).suboptions[0].id}`;
     }
-    return undefined;
+    return null;
   }, [selectedOptionRecords]);
 
   const setSelectedValueOfNonMaterialSuboption = useCallback((option: CategoryOption<false>) => {
@@ -302,6 +303,16 @@ export default function Home() {
   const onSelectedPrintingTypeChange = useCallback(({value}: {value: string}) => {
     setSelectedPrintingTypeId(Number(value));
   }, []);
+
+  const onRemoveSelectedSuboption = useCallback((option: CategoryOption) => {
+    return () => {
+      if (selectedOptionRecords[option.id]) {
+        delete selectedOptionRecords[option.id];
+        setSelectedOptionRecords({...selectedOptionRecords});
+        handleSubmit(onSubmit)();
+      }
+    };
+  }, [onSubmit, selectedOptionRecords]);
 
   const renderMaterialSuboptionArea = useCallback((option: CategoryOption<true>, index: number) => {
     return (
@@ -369,6 +380,15 @@ export default function Home() {
                         </RadioCardItem>
                       ))
                     }
+                    {
+                      selectedOptionRecords[option.id]
+                      ?
+                      <Tooltip content={`Remove the "${option.name}" option`} showArrow openDelay={250}>
+                        <CloseButton size="sm" onClick={onRemoveSelectedSuboption(option)}/>
+                      </Tooltip>
+                      :
+                      null
+                    }
                   </SimpleGrid>
                 </RadioCardRoot>
                 {
@@ -393,9 +413,10 @@ export default function Home() {
         }
       </VStack>
     );
-  }, [setSelectedValueOfMaterialSuboption]);
+  }, [setSelectedValueOfMaterialSuboption, getSelectedValueOfMaterialSuboption, onDeleteMaterialCategorySuboption, onAddMaterialCategorySuboption]);
 
   const renderNonMaterialSuboptionArea = useCallback((option: CategoryOption<false>, index: number) => {
+    console.log("getSelectedValueOfNonMaterialSuboption(option): ", getSelectedValueOfNonMaterialSuboption(option));
     return (
       <RadioCardRoot
         orientation="vertical"
@@ -417,10 +438,19 @@ export default function Home() {
               </RadioCardItem>
             ))
           }
+          {
+            selectedOptionRecords[option.id]
+            ?
+            <Tooltip content={`Remove the ${option.name} option`} showArrow openDelay={250}>
+              <CloseButton size="sm" onClick={onRemoveSelectedSuboption(option)}/>
+            </Tooltip>
+            :
+            null
+          }
         </SimpleGrid>
       </RadioCardRoot>
     );
-  }, [setSelectedValueOfNonMaterialSuboption]);
+  }, [setSelectedValueOfNonMaterialSuboption, getSelectedValueOfNonMaterialSuboption, onRemoveSelectedSuboption]);
 
   const onCategoryProductSubcategoryMenuItemClick = useCallback((categoryProductSubcategoryId: number) => {
     return () => {
