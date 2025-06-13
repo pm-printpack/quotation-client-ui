@@ -2,6 +2,6 @@
   background-color: var(--chakra-colors-bg-panel);
 }
 
-.radioCardItem:is(:focus, [data-focus]) {
+/* .radioCardItem:is([data-state="checked"]) {
   background-color: var(--mix-background, var(--chakra-colors-color-palette-muted))
-}
+} */

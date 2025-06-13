@@ -2,8 +2,8 @@
 import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1, CategorySuboptionByWeight } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
-import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, Checkbox, CheckboxCardControl, CheckboxCardHiddenInput, CheckboxCardRoot, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
+import { Fragment, MouseEvent, useCallback, useEffect, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
@@ -120,8 +120,6 @@ export default function Home() {
     isSuggestedSKUs([]);
     setFormValues(undefined);
     console.log(values);
-    console.log("selectedOptionRecords: ", selectedOptionRecords);
-    console.log("selectedPrintingTypeId: ", selectedPrintingTypeId);
     if (values) {
       if (!values.width || !values.height) {
         return;
@@ -304,15 +302,33 @@ export default function Home() {
     setSelectedPrintingTypeId(Number(value));
   }, []);
 
-  const onRemoveSelectedSuboption = useCallback((option: CategoryOption) => {
-    return () => {
-      if (selectedOptionRecords[option.id]) {
-        delete selectedOptionRecords[option.id];
-        setSelectedOptionRecords({...selectedOptionRecords});
-        handleSubmit(onSubmit)();
+  const clearSelectedSuboption = useCallback((option: CategoryOption) => {
+    if (selectedOptionRecords[option.id]) {
+      delete selectedOptionRecords[option.id];
+      setSelectedOptionRecords({...selectedOptionRecords});
+      handleSubmit(onSubmit)();
+    }
+  }, [onSubmit, selectedOptionRecords]);
+
+  const onUnselectedMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboption: CategoryMaterialSuboption, suboption: CategorySuboption) => {
+    return (event: MouseEvent<HTMLDivElement>) => {
+      if (getSelectedValueOfMaterialSuboption(option, materialSuboption.id) === `${suboption.id}`) {
+        event.stopPropagation();
+        event.preventDefault();
+        clearSelectedSuboption(option);
       }
     };
-  }, [onSubmit, selectedOptionRecords]);
+  }, [getSelectedValueOfMaterialSuboption, clearSelectedSuboption]);
+
+  const onUnselectedNonMaterialSuboption = useCallback((option: CategoryOption<false>, suboption: CategorySuboption) => {
+    return (event: MouseEvent<HTMLDivElement>) => {
+      if (getSelectedValueOfNonMaterialSuboption(option) === `${suboption.id}`) {
+        event.stopPropagation();
+        event.preventDefault();
+        clearSelectedSuboption(option);
+      }
+    };
+  }, [getSelectedValueOfNonMaterialSuboption, clearSelectedSuboption]);
 
   const renderMaterialSuboptionArea = useCallback((option: CategoryOption<true>, index: number) => {
     return (
@@ -372,22 +388,18 @@ export default function Home() {
                   <SimpleGrid w="full" gap={4} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
                     {
                       materialSuboption.suboptions.map((suboption: CategorySuboption) => (
-                        <RadioCardItem key={`suboption-${suboption.id}`} value={`${suboption.id}`} className={styles.radioCardItem}>
+                        <RadioCardItem
+                          key={`suboption-${suboption.id}`}
+                          value={`${suboption.id}`}
+                          className={styles.radioCardItem}
+                          onClick={onUnselectedMaterialSuboption(option, materialSuboption, suboption)}
+                        >
                           <RadioCardItemHiddenInput />
                           <RadioCardItemText>
                             <Center p="2" fontSize="sm">{suboption.name}</Center>
                           </RadioCardItemText>
                         </RadioCardItem>
                       ))
-                    }
-                    {
-                      selectedOptionRecords[option.id]
-                      ?
-                      <Tooltip content={`Remove the "${option.name}" option`} showArrow openDelay={250}>
-                        <CloseButton size="sm" onClick={onRemoveSelectedSuboption(option)}/>
-                      </Tooltip>
-                      :
-                      null
                     }
                   </SimpleGrid>
                 </RadioCardRoot>
@@ -413,10 +425,9 @@ export default function Home() {
         }
       </VStack>
     );
-  }, [setSelectedValueOfMaterialSuboption, getSelectedValueOfMaterialSuboption, onDeleteMaterialCategorySuboption, onAddMaterialCategorySuboption]);
+  }, [setSelectedValueOfMaterialSuboption, getSelectedValueOfMaterialSuboption, onDeleteMaterialCategorySuboption, onAddMaterialCategorySuboption, onUnselectedMaterialSuboption]);
 
   const renderNonMaterialSuboptionArea = useCallback((option: CategoryOption<false>, index: number) => {
-    console.log("getSelectedValueOfNonMaterialSuboption(option): ", getSelectedValueOfNonMaterialSuboption(option));
     return (
       <RadioCardRoot
         orientation="vertical"
@@ -430,7 +441,12 @@ export default function Home() {
         <SimpleGrid w="full" gap={{md: 4, base: 2}} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
           {
             option.suboptions.map((suboption: CategorySuboption) => (
-              <RadioCardItem key={`suboption-${suboption.id}`} value={`${suboption.id}`} className={styles.radioCardItem}>
+              <RadioCardItem
+                key={`suboption-${suboption.id}`}
+                value={`${suboption.id}`}
+                className={styles.radioCardItem}
+                onClick={onUnselectedNonMaterialSuboption(option, suboption)}
+              >
                 <RadioCardItemHiddenInput />
                 <RadioCardItemText>
                   <Center p="2" fontSize="sm">{suboption.name}</Center>
@@ -438,19 +454,10 @@ export default function Home() {
               </RadioCardItem>
             ))
           }
-          {
-            selectedOptionRecords[option.id]
-            ?
-            <Tooltip content={`Remove the ${option.name} option`} showArrow openDelay={250}>
-              <CloseButton size="sm" onClick={onRemoveSelectedSuboption(option)}/>
-            </Tooltip>
-            :
-            null
-          }
         </SimpleGrid>
       </RadioCardRoot>
     );
-  }, [setSelectedValueOfNonMaterialSuboption, getSelectedValueOfNonMaterialSuboption, onRemoveSelectedSuboption]);
+  }, [setSelectedValueOfNonMaterialSuboption, getSelectedValueOfNonMaterialSuboption, onUnselectedNonMaterialSuboption]);
 
   const onCategoryProductSubcategoryMenuItemClick = useCallback((categoryProductSubcategoryId: number) => {
     return () => {
