@@ -61,6 +61,10 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         }
       }
       const materialCost: number = materialArea * totalMaterialUnitPricePerSquareMeter;
+      console.log("printingLengthPerPackage: ", printingLengthPerPackage);
+      console.log("materialWidth: ", materialWidth);
+      console.log("materialArea: ", materialArea);
+      console.log("materialCost: ", materialCost);
 
       // Printing Cost
       let totalUnitPricePerSquareMeter: number = 0;
@@ -74,6 +78,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         }
       }
       const printingCost: number = materialArea * totalUnitPricePerSquareMeter;
+      console.log("printingCost: ", printingCost);
 
       // Composite Processing Fee
       let numOfLaminationLayers: number = 0;
@@ -82,6 +87,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialItem: CategoryMaterialItem | undefined) => !!materialItem).length;
       }
       const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
+      console.log("laminationCost: ", laminationCost);
 
       // Bag Making Cost
       const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
@@ -110,6 +116,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       } else {
         bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPricePerSquareMeter || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
       }
+      console.log("bagMakingCost: ", bagMakingCost);
 
       // Plate Fee
       let numOfPlate: number = 0;
@@ -121,10 +128,13 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         }
       }
       const plateFee: number = numOfPlate * 450;
+      console.log("plateFee: ", plateFee);
 
       // Packaging Cost
       const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
+      console.log("packagingCost: ", packagingCost);
 
+      console.log("isSelectedsquareBottomBag: ", isSelectedsquareBottomBag);
       if (isSelectedsquareBottomBag) {
         totalPrices.push(1.55 * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost);
       } else {
@@ -207,6 +217,11 @@ export const calculationSlice = createSlice({
         const numOfBagsPerImpression: number = Math.floor(1120 / (width + 5));
         const printingQuantity: number = baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerImpression;
         const printingCost: number = printingQuantity * 3.8;
+        console.log("printingWidth: ", printingWidth);
+        console.log("horizontalLayoutCount: ", horizontalLayoutCount);
+        console.log("numOfBagsPerImpression: ", numOfBagsPerImpression);
+        console.log("printingQuantity: ", printingQuantity);
+        console.log("printingCost: ", printingCost);
 
         // Material Cost
         const printingLength: number = baseCase.totalQuantity / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.5) + 50;
@@ -233,6 +248,9 @@ export const calculationSlice = createSlice({
           }
         }
         const materialCost: number = materialArea * totalUnitPricePerSquareMeter;
+        console.log("printingLength: ", printingLength);
+        console.log("materialArea: ", materialArea);
+        console.log("materialCost: ", materialCost);
 
         // Composite Processing Fee
         let numOfLaminationLayers: number = 0;
@@ -241,6 +259,7 @@ export const calculationSlice = createSlice({
           numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialItem: CategoryMaterialItem | undefined) => !!materialItem).length;
         }
         const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
+        console.log("laminationCost: ", laminationCost);
 
         // Bag Making Cost
         let bagMakingCost: number = 0;
@@ -260,12 +279,15 @@ export const calculationSlice = createSlice({
             bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
           }
         }
+        console.log("bagMakingCost: ", bagMakingCost);
 
         // Die-Cutting Cost
         const dieCuttingCost: number = customShaped ? 600 : 0;
+        console.log("dieCuttingCost: ", dieCuttingCost);
 
         // Packaging Cost
         const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
+        console.log("packagingCost: ", packagingCost);
 
         totalPrices.push((printingCost + materialCost + laminationCost + bagMakingCost + dieCuttingCost + packagingCost) * 1.08);
       }
