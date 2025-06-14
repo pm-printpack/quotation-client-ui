@@ -1,5 +1,5 @@
 import { ActionReducerMapBuilder, createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { CategoryMaterialSuboption, CategoryOption, CategorySuboption, ProductSubcategory } from "./categories.slice";
+import { CategoryMaterialItem, CategoryOption, CategorySuboption, ProductSubcategory } from "./categories.slice";
 import CalculationUtil from "@/app/utils/CalculationUtil";
 import { RootState } from "../store";
 
@@ -44,57 +44,56 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       const customShaped: boolean = CalculationUtil.isCustomShaped(options);
       const materialWidth: number = customShaped ? (height + 20) * 2 + (gusset || 0) : (height + 10) * 2 + (gusset || 0);
       let materialArea: number = (printingLengthPerPackage * materialWidth * baseCase.totalQuantity) / 1000000;
-      let totalMaterialUnitPrice: number = 0;
+      let totalMaterialUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
         if (option.isMaterial) {
-          const materialSuboptions: (CategoryMaterialSuboption | undefined)[] = (option as CategoryOption<true>).suboptions;
-          for (let j: number = 0; j < materialSuboptions.length; ++j) {
-            // totalUnitPrice += suboptions[j].unitPrice;
-            const materialSuboption: CategoryMaterialSuboption | undefined = materialSuboptions[j];
-            if (materialSuboption) {
-              const suboptions: CategorySuboption[] = materialSuboption.suboptions;
+          const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+          for (let j: number = 0; j < materialItems.length; ++j) {
+            const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+            if (materialItem) {
+              const suboptions: CategorySuboption[] = materialItem.suboptions;
               for (let n: number = 0; n < suboptions.length; ++n) {
-                totalMaterialUnitPrice += suboptions[n].unitPrice;
+                totalMaterialUnitPricePerSquareMeter += suboptions[n].unitPricePerSquareMeter;
               }
             }
           }
         }
       }
-      const materialCost: number = materialArea * totalMaterialUnitPrice;
+      const materialCost: number = materialArea * totalMaterialUnitPricePerSquareMeter;
 
       // Printing Cost
-      let totalUnitPrice: number = 0;
+      let totalUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
         if (!option.isMaterial && ["color", "production process"].includes(option.name.toLocaleLowerCase())) {
           const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
           for (let j: number = 0; j < suboptions.length; ++j) {
-            totalUnitPrice += suboptions[j].unitPrice;
+            totalUnitPricePerSquareMeter += suboptions[j].unitPricePerSquareMeter;
           }
         }
       }
-      const printingCost: number = materialArea * totalUnitPrice;
+      const printingCost: number = materialArea * totalUnitPricePerSquareMeter;
 
       // Composite Processing Fee
       let numOfLaminationLayers: number = 0;
       const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "layer material")[0];
       if (laminationLayerOption) {
-        numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialSuboption: CategoryMaterialSuboption | undefined) => !!materialSuboption).length;
+        numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialItem: CategoryMaterialItem | undefined) => !!materialItem).length;
       }
       const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
 
       // Bag Making Cost
       const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
       const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)[0];
-      let totalProductionProcessUnitPrice: number = 0;
+      let totalProductionProcessUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
         if (!option.isMaterial && option.name.toLocaleLowerCase() === "production process") {
           for (let j: number = 0; j < option.suboptions.length; ++j) {
             const suboption: CategorySuboption = (option as CategoryOption<false>).suboptions[j];
             if (["spout", "valve"].includes(suboption.name.toLocaleLowerCase())) {
-              totalProductionProcessUnitPrice += suboption.unitPrice;
+              totalProductionProcessUnitPricePerSquareMeter += suboption.unitPricePerSquareMeter;
             }
           }
         }
@@ -104,12 +103,12 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       const isSelectedsquareBottomBag: boolean = selectedProductSubcategory && selectedProductSubcategory.name.toLocaleLowerCase() === "square bottom bag";
       if (isSelectedsquareBottomBag) {
         if (!selectedZipperSuboption || selectedZipperSuboption.name.toLocaleLowerCase() === "no zipper") {
-          bagMakingCost = 0.5 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPrice;
+          bagMakingCost = 0.5 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
         } else {
-          bagMakingCost = 0.6 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPrice;
+          bagMakingCost = 0.6 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
         }
       } else {
-        bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPrice || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPrice;
+        bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPricePerSquareMeter || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
       }
 
       // Plate Fee
@@ -149,9 +148,9 @@ export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalcul
       let surfaceDensity: number = 0;
       for (const option of options) {
         if (option.isMaterial) {
-          for (const materialSuboption of (option as CategoryOption<true>).suboptions) {
-            if (materialSuboption) {
-              for (const suboption of materialSuboption.suboptions) {
+          for (const materialItem of (option as CategoryOption<true>).suboptions) {
+            if (materialItem) {
+              for (const suboption of materialItem.suboptions) {
                 surfaceDensity += suboption.density * suboption.thickness;
               }
             }
@@ -212,34 +211,34 @@ export const calculationSlice = createSlice({
         // Material Cost
         const printingLength: number = baseCase.totalQuantity / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.5) + 50;
         const materialArea: number = printingLength * 760 / 1000;
-        let totalUnitPrice: number = 0;
+        let totalUnitPricePerSquareMeter: number = 0;
         for (let i: number = 0; i < options.length; ++i) {
           const option: CategoryOption = options[i];
           if (option.isMaterial) {
-            const materialSuboptions: (CategoryMaterialSuboption | undefined)[] = (option as CategoryOption<true>).suboptions;
-            for (let j: number = 0; j < materialSuboptions.length; ++j) {
-              const materialSuboption: CategoryMaterialSuboption | undefined = materialSuboptions[j];
-              if (materialSuboption) {
-                const suboptions: CategorySuboption[] = materialSuboption.suboptions;
+            const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+            for (let j: number = 0; j < materialItems.length; ++j) {
+              const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+              if (materialItem) {
+                const suboptions: CategorySuboption[] = materialItem.suboptions;
                 for (let n: number = 0; n < suboptions.length; ++n) {
-                  totalUnitPrice += suboptions[n].unitPrice || 0;
+                  totalUnitPricePerSquareMeter += suboptions[n].unitPricePerSquareMeter || 0;
                 }
               }
             }
           } else {
             const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
             for (let n: number = 0; n < suboptions.length; ++n) {
-              totalUnitPrice += suboptions[n].unitPrice || 0;
+              totalUnitPricePerSquareMeter += suboptions[n].unitPricePerSquareMeter || 0;
             }
           }
         }
-        const materialCost: number = materialArea * totalUnitPrice;
+        const materialCost: number = materialArea * totalUnitPricePerSquareMeter;
 
         // Composite Processing Fee
         let numOfLaminationLayers: number = 0;
         const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "layer material")[0];
         if (laminationLayerOption) {
-          numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialSuboption: CategoryMaterialSuboption | undefined) => !!materialSuboption).length;
+          numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialItem: CategoryMaterialItem | undefined) => !!materialItem).length;
         }
         const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
 
@@ -278,6 +277,7 @@ export const calculationSlice = createSlice({
         state.totalPrices = [];
         return;
       }
+      console.log("numOfMatchedModulus: ", numOfMatchedModulus);
       const totalPrices: number[] = [];
       for (const baseCase of cases) {
         // Printing Cost
@@ -289,9 +289,12 @@ export const calculationSlice = createSlice({
         } else {
           printingCost = 1300 + (printingLength - 1000) * 0.2;
         }
+        console.log("printingLength: ", printingLength);
+        console.log("printingCost: ", printingCost);
         
         // Material Cost
         const customShaped: boolean = CalculationUtil.isCustomShaped(options);
+        console.log("customShaped: ", customShaped);
         let printingWidth: number = 0;
         if (customShaped) {
           printingWidth = (height + 10) * 2 + (gusset || 0) + 10 + 14;
@@ -315,28 +318,31 @@ export const calculationSlice = createSlice({
         }
         const materialArea: number = materialWidth * printingLength / 1000;
         let materialPrice: number = 0;
+        const materialChineseNames: string[] = [];
         for (let i: number = 0; i < options.length; ++i) {
           const option: CategoryOption = options[i];
           if (option.isMaterial) {
-            const materialSuboptions: (CategoryMaterialSuboption | undefined)[] = (option as CategoryOption<true>).suboptions;
-            for (let j: number = 0; j < materialSuboptions.length; ++j) {
-              const materialSuboption: CategoryMaterialSuboption | undefined = materialSuboptions[j];
-              if (materialSuboption) {
-                const suboptions: CategorySuboption[] = materialSuboption.suboptions;
+            const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+            for (let j: number = 0; j < materialItems.length; ++j) {
+              const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+              if (materialItem) {
+                const suboptions: CategorySuboption[] = materialItem.suboptions;
                 for (let n: number = 0; n < suboptions.length; ++n) {
-                  if (["触感膜", "拉丝膜"].includes(suboptions[n].chineseName)) {
-                    materialPrice += 3.5 * materialArea;
-                  } else {
-                    materialPrice += 3 * materialArea;
-                  }
+                  materialChineseNames.push(suboptions[n].chineseName);
                 }
               }
             }
-          } else {
-            const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-            materialPrice += suboptions.length * 3 * materialArea;
           }
         }
+        if (materialChineseNames.find((name: string) => ["触感膜", "拉丝膜"].includes(name))) {
+          materialPrice = 3.5 * materialArea;
+        } else {
+          materialPrice = 3 * materialArea;
+        }
+        console.log("printingWidth: ", printingWidth);
+        console.log("materialWidth: ", materialWidth);
+        console.log("materialArea: ", materialArea);
+        console.log("materialPrice: ", materialPrice);
 
         // Bag Making Cost
         let bagMakingCost: number = 0;
@@ -355,18 +361,23 @@ export const calculationSlice = createSlice({
             bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
           }
         }
+        console.log("bagMakingCost: ", bagMakingCost);
 
         // Die-Cutting Cost
         const dieCuttingCost: number = customShaped ? 600 : 0;
+        console.log("dieCuttingCost: ", dieCuttingCost);
 
         // Labor Cost
         const laborCost: number = baseCase.totalQuantity * 0.02;
+        console.log("laborCost: ", laborCost);
         
         // Packaging Cost
         const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
+        console.log("packagingCost: ", packagingCost);
 
         // File processing Fee
         const fileProcessingFee: number = baseCase.numOfStyles * 50;
+        console.log("fileProcessingFee: ", fileProcessingFee);
 
         totalPrices.push((printingCost + materialPrice + bagMakingCost + dieCuttingCost + laborCost + packagingCost + fileProcessingFee) * 1.08);
       }

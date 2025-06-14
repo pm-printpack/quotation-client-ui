@@ -1,5 +1,5 @@
 "use client";
-import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialSuboption, hideMaterialSuboption, showMaterialSuboption1By1, CategorySuboptionByWeight } from "@/lib/features/categories.slice";
+import { fetchAllPrintingTypes, fetchAllProductSubcategories, fetchCategoryOptions, CategoryOption, PrintingType, ProductSubcategory, CategorySuboption, CategoryMaterialItem, hideMaterialItem, showMaterialItem1By1, CategoryMaterialSuboption } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
 import { AccordionItem, AccordionItemBody, AccordionItemContent, AccordionItemIndicator, AccordionItemTrigger, AccordionRoot, Box, Button, Center, Checkbox, CheckboxCardControl, CheckboxCardHiddenInput, CheckboxCardRoot, CloseButton, createOverlay, DataListItem, DataListItemLabel, DataListItemValue, DataListRoot, DrawerBackdrop, DrawerBody, DrawerContent, DrawerOpenChangeDetails, DrawerPositioner, DrawerRoot, DrawerTrigger, FieldErrorText, FieldLabel, FieldRoot, Flex, Heading, HStack, IconButton, InputGroup, Link, NumberInputControl, NumberInputInput, NumberInputRoot, Portal, RadioCardItem, RadioCardItemHiddenInput, RadioCardItemText, RadioCardRoot, Separator, SimpleGrid, Span, Stack, StackSeparator, TabsList, TabsRoot, TabsTrigger, Text, useBreakpointValue, VStack } from "@chakra-ui/react";
@@ -191,20 +191,20 @@ export default function Home() {
 
   const onAddMaterialCategorySuboption = useCallback((option: CategoryOption<true>) => {
     return () => {
-      dispatch(showMaterialSuboption1By1(option.id));
+      dispatch(showMaterialItem1By1(option.id));
     };
   }, []);
 
-  const onDeleteMaterialCategorySuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number) => {
+  const onDeleteMaterialCategorySuboption = useCallback((option: CategoryOption<true>, materialItemId: number) => {
     return () => {
-      dispatch(hideMaterialSuboption({
+      dispatch(hideMaterialItem({
         optionId: option.id,
-        suboptionId: materialSuboptionId
+        suboptionId: materialItemId
       }));
       if (selectedOptionRecords[option.id]) {
-        const materialSuboptionIndex: number = (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions.findIndex((materialSuboption: CategoryMaterialSuboption | undefined) => materialSuboption?.id === materialSuboptionId);
-        if (materialSuboptionIndex > -1) {
-          (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions[materialSuboptionIndex] = undefined;
+        const materialItemIndex: number = (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions.findIndex((materialItem: CategoryMaterialItem | undefined) => materialItem?.id === materialItemId);
+        if (materialItemIndex > -1) {
+          (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions[materialItemIndex] = undefined;
           setSelectedOptionRecords({...selectedOptionRecords});
           handleSubmit(onSubmit)();
         }
@@ -218,19 +218,19 @@ export default function Home() {
     }
   }, DEBOUNCED_WAIT_TIME), [onSubmit, isMobile]);
 
-  const getSelectedValueOfMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number): string | null => {
+  const getSelectedValueOfMaterialItem = useCallback((option: CategoryOption<true>, materialItemId: number): string | null => {
     const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
     if (selectedOption) {
       const selectedMaterialOption: CategoryOption<true> = selectedOption as CategoryOption<true>;
-      const selectedMaterialSuboption: CategoryMaterialSuboption | undefined = selectedMaterialOption.suboptions.find((materialSuboption: CategoryMaterialSuboption | undefined) => materialSuboption?.id === materialSuboptionId);
-      if (selectedMaterialSuboption && selectedMaterialSuboption.suboptions?.length > 0) {
-        return `${selectedMaterialSuboption.suboptions[0].id}`;
+      const selectedMaterialItem: CategoryMaterialItem | undefined = selectedMaterialOption.suboptions.find((materialItem: CategoryMaterialItem | undefined) => materialItem?.id === materialItemId);
+      if (selectedMaterialItem && selectedMaterialItem.suboptions?.length > 0) {
+        return `${selectedMaterialItem.suboptions[0].id}`;
       }
     }
     return null;
   }, [selectedOptionRecords]);
 
-  const setSelectedValueOfMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboptionId: number) => {
+  const setSelectedValueOfMaterialItem = useCallback((option: CategoryOption<true>, materialItemId: number) => {
     return ({ value: selectedSuboptionId }: {value: string | null}) => {
       const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
       if (!selectedOption) {
@@ -239,24 +239,24 @@ export default function Home() {
           suboptions: []
         };
       }
-      const materialSuboptionIndex: number = option.suboptions.findIndex((materialSuboption: CategoryMaterialSuboption | undefined) => materialSuboption?.id === materialSuboptionId);
-      if (materialSuboptionIndex > -1) {
-        const materialSuboption: CategoryMaterialSuboption | undefined = option.suboptions.find((materialSuboption: CategoryMaterialSuboption | undefined) => materialSuboption?.id === materialSuboptionId);
-        if (!selectedOptionRecords[option.id].suboptions[materialSuboptionIndex] && materialSuboption) {
-          selectedOptionRecords[option.id].suboptions[materialSuboptionIndex] = {
-            ...materialSuboption,
+      const materialItemIndex: number = option.suboptions.findIndex((materialItem: CategoryMaterialItem | undefined) => materialItem?.id === materialItemId);
+      if (materialItemIndex > -1) {
+        const materialItem: CategoryMaterialItem | undefined = option.suboptions.find((materialItem: CategoryMaterialItem | undefined) => materialItem?.id === materialItemId);
+        if (!selectedOptionRecords[option.id].suboptions[materialItemIndex] && materialItem) {
+          selectedOptionRecords[option.id].suboptions[materialItemIndex] = {
+            ...materialItem,
             suboptions: []
           };
         }
-        if (materialSuboption && materialSuboption.shown) {
-          const selectedSuboption: CategorySuboptionByWeight | undefined = materialSuboption.suboptions.find((suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId));
+        if (materialItem && materialItem.shown) {
+          const selectedSuboption: CategoryMaterialSuboption | undefined = materialItem.suboptions.find((suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId));
           if (selectedSuboption) {
-            const selectedMaterialSuboption: CategoryMaterialSuboption | undefined = (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions[materialSuboptionIndex];
-            if (selectedMaterialSuboption) {
-              selectedMaterialSuboption.suboptions[0] = selectedSuboption;
+            const selectedMaterialItem: CategoryMaterialItem | undefined = (selectedOptionRecords[option.id] as CategoryOption<true>).suboptions[materialItemIndex];
+            if (selectedMaterialItem) {
+              selectedMaterialItem.suboptions[0] = selectedSuboption;
             }
           } else {
-            selectedOptionRecords[option.id].suboptions[materialSuboptionIndex] = undefined;
+            selectedOptionRecords[option.id].suboptions[materialItemIndex] = undefined;
           }
           setSelectedOptionRecords({...selectedOptionRecords});
         }
@@ -267,7 +267,7 @@ export default function Home() {
     };
   }, [selectedOptionRecords, handleSubmit, onSubmit, isMobile]);
 
-  const getSelectedValueOfNonMaterialSuboption = useCallback((option: CategoryOption<false>): string | null => {
+  const getSelectedValueOfNonMaterialItem = useCallback((option: CategoryOption<false>): string | null => {
     const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
     if (selectedOption) {
       return `${(selectedOption as CategoryOption<false>).suboptions[0].id}`;
@@ -275,7 +275,7 @@ export default function Home() {
     return null;
   }, [selectedOptionRecords]);
 
-  const setSelectedValueOfNonMaterialSuboption = useCallback((option: CategoryOption<false>) => {
+  const setSelectedValueOfNonMaterialItem = useCallback((option: CategoryOption<false>) => {
     return ({ value: selectedSuboptionId }: {value: string | null}) => {
       let selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
       if (!selectedOption) {
@@ -310,37 +310,37 @@ export default function Home() {
     }
   }, [onSubmit, selectedOptionRecords]);
 
-  const onUnselectedMaterialSuboption = useCallback((option: CategoryOption<true>, materialSuboption: CategoryMaterialSuboption, suboption: CategorySuboption) => {
+  const onUnselectedMaterialItem = useCallback((option: CategoryOption<true>, materialItem: CategoryMaterialItem, suboption: CategorySuboption) => {
     return (event: MouseEvent<HTMLDivElement>) => {
-      if (getSelectedValueOfMaterialSuboption(option, materialSuboption.id) === `${suboption.id}`) {
+      if (getSelectedValueOfMaterialItem(option, materialItem.id) === `${suboption.id}`) {
         event.stopPropagation();
         event.preventDefault();
         clearSelectedSuboption(option);
       }
     };
-  }, [getSelectedValueOfMaterialSuboption, clearSelectedSuboption]);
+  }, [getSelectedValueOfMaterialItem, clearSelectedSuboption]);
 
-  const onUnselectedNonMaterialSuboption = useCallback((option: CategoryOption<false>, suboption: CategorySuboption) => {
+  const onUnselectedNonMaterialItem = useCallback((option: CategoryOption<false>, suboption: CategorySuboption) => {
     return (event: MouseEvent<HTMLDivElement>) => {
-      if (getSelectedValueOfNonMaterialSuboption(option) === `${suboption.id}`) {
+      if (getSelectedValueOfNonMaterialItem(option) === `${suboption.id}`) {
         event.stopPropagation();
         event.preventDefault();
         clearSelectedSuboption(option);
       }
     };
-  }, [getSelectedValueOfNonMaterialSuboption, clearSelectedSuboption]);
+  }, [getSelectedValueOfNonMaterialItem, clearSelectedSuboption]);
 
-  const renderMaterialSuboptionArea = useCallback((option: CategoryOption<true>, index: number) => {
+  const renderMaterialItemArea = useCallback((option: CategoryOption<true>, index: number) => {
     return (
       <VStack w="full" align="flex-start" {...(option.suboptions.length > 1 ? {bg: "bg.muted", p: "0.75rem", borderRadius: "0.25rem"} : {})}>
         {
-          option.suboptions.map((materialSuboption: CategoryMaterialSuboption | undefined, suboptionIndex: number) => {
-            if (!materialSuboption || !materialSuboption.shown) {
+          option.suboptions.map((materialItem: CategoryMaterialItem | undefined, suboptionIndex: number) => {
+            if (!materialItem || !materialItem.shown) {
               return undefined;
             }
             return (
               <Flex
-                key={`materialSuboption-${materialSuboption.id}`}
+                key={`materialItem-${materialItem.id}`}
                 w="full"
                 direction={{base: "column", md: "row"}}
                 gap="4"
@@ -382,17 +382,17 @@ export default function Home() {
                   align="center"
                   w="full"
                   variant="outline"
-                  value={getSelectedValueOfMaterialSuboption(option, materialSuboption.id)}
-                  onValueChange={setSelectedValueOfMaterialSuboption(option, materialSuboption.id)}
+                  value={getSelectedValueOfMaterialItem(option, materialItem.id)}
+                  onValueChange={setSelectedValueOfMaterialItem(option, materialItem.id)}
                 >
                   <SimpleGrid w="full" gap={4} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
                     {
-                      materialSuboption.suboptions.map((suboption: CategorySuboption) => (
+                      materialItem.suboptions.map((suboption: CategorySuboption) => (
                         <RadioCardItem
                           key={`suboption-${suboption.id}`}
                           value={`${suboption.id}`}
                           className={styles.radioCardItem}
-                          onClick={onUnselectedMaterialSuboption(option, materialSuboption, suboption)}
+                          onClick={onUnselectedMaterialItem(option, materialItem, suboption)}
                         >
                           <RadioCardItemHiddenInput />
                           <RadioCardItemText>
@@ -404,9 +404,9 @@ export default function Home() {
                   </SimpleGrid>
                 </RadioCardRoot>
                 {
-                  option.suboptions.filter((materialSuboption: CategoryMaterialSuboption | undefined) => materialSuboption?.shown).length > 1
+                  option.suboptions.filter((materialItem: CategoryMaterialItem | undefined) => materialItem?.shown).length > 1
                   ?
-                  <CloseButton size="sm" position="absolute" top="0" right="0" onClick={onDeleteMaterialCategorySuboption(option, materialSuboption.id)}/>
+                  <CloseButton size="sm" position="absolute" top="0" right="0" onClick={onDeleteMaterialCategorySuboption(option, materialItem.id)}/>
                   :
                   null
                 }
@@ -415,7 +415,7 @@ export default function Home() {
           })
         }
         {
-          (option.suboptions.length > 1 && option.suboptions.filter((suboption: CategoryMaterialSuboption | undefined) => suboption?.shown).length < option.suboptions.length)
+          (option.suboptions.length > 1 && option.suboptions.filter((suboption: CategoryMaterialItem | undefined) => suboption?.shown).length < option.suboptions.length)
           ?
           <Button variant="subtle" w="full" onClick={onAddMaterialCategorySuboption(option)}>
             <LuPlus />
@@ -425,9 +425,9 @@ export default function Home() {
         }
       </VStack>
     );
-  }, [setSelectedValueOfMaterialSuboption, getSelectedValueOfMaterialSuboption, onDeleteMaterialCategorySuboption, onAddMaterialCategorySuboption, onUnselectedMaterialSuboption]);
+  }, [setSelectedValueOfMaterialItem, getSelectedValueOfMaterialItem, onDeleteMaterialCategorySuboption, onAddMaterialCategorySuboption, onUnselectedMaterialItem]);
 
-  const renderNonMaterialSuboptionArea = useCallback((option: CategoryOption<false>, index: number) => {
+  const renderNonMaterialItemArea = useCallback((option: CategoryOption<false>, index: number) => {
     return (
       <RadioCardRoot
         orientation="vertical"
@@ -435,8 +435,8 @@ export default function Home() {
         w="full"
         variant="outline"
         key={`category-option-${option.id}`}
-        value={getSelectedValueOfNonMaterialSuboption(option)}
-        onValueChange={setSelectedValueOfNonMaterialSuboption(option)}
+        value={getSelectedValueOfNonMaterialItem(option)}
+        onValueChange={setSelectedValueOfNonMaterialItem(option)}
       >
         <SimpleGrid w="full" gap={{md: 4, base: 2}} templateColumns="repeat(auto-fit, minmax(10rem, 10rem))">
           {
@@ -445,7 +445,7 @@ export default function Home() {
                 key={`suboption-${suboption.id}`}
                 value={`${suboption.id}`}
                 className={styles.radioCardItem}
-                onClick={onUnselectedNonMaterialSuboption(option, suboption)}
+                onClick={onUnselectedNonMaterialItem(option, suboption)}
               >
                 <RadioCardItemHiddenInput />
                 <RadioCardItemText>
@@ -457,7 +457,7 @@ export default function Home() {
         </SimpleGrid>
       </RadioCardRoot>
     );
-  }, [setSelectedValueOfNonMaterialSuboption, getSelectedValueOfNonMaterialSuboption, onUnselectedNonMaterialSuboption]);
+  }, [setSelectedValueOfNonMaterialItem, getSelectedValueOfNonMaterialItem, onUnselectedNonMaterialItem]);
 
   const onCategoryProductSubcategoryMenuItemClick = useCallback((categoryProductSubcategoryId: number) => {
     return () => {
@@ -876,7 +876,7 @@ export default function Home() {
               {
                 options.map((option: CategoryOption, index: number) => {
                   return (
-                    ((!option.isMaterial && option.suboptions.length > 0) || (option.isMaterial && option.suboptions.length > 0 && (option as CategoryOption<true>).suboptions.filter((suboption: CategoryMaterialSuboption | undefined) => suboption?.shown).length > 0))
+                    ((!option.isMaterial && option.suboptions.length > 0) || (option.isMaterial && option.suboptions.length > 0 && (option as CategoryOption<true>).suboptions.filter((suboption: CategoryMaterialItem | undefined) => suboption?.shown).length > 0))
                     ?
                     <FieldRoot orientation={{base: "vertical", md: "horizontal"}} key={`option-${option.id}`} alignItems="flex-start">
                       <FieldLabel alignSelf="flex-start" justifyContent="flex-end">
@@ -886,9 +886,9 @@ export default function Home() {
                         {
                           option.isMaterial
                           ?
-                          renderMaterialSuboptionArea(option as CategoryOption<true>, index)
+                          renderMaterialItemArea(option as CategoryOption<true>, index)
                           :
-                          renderNonMaterialSuboptionArea(option as CategoryOption<false>, index)
+                          renderNonMaterialItemArea(option as CategoryOption<false>, index)
                         }
                       </VStack>
                     </FieldRoot>
@@ -948,13 +948,13 @@ export default function Home() {
                 Object.values(selectedOptionRecords).map((option: CategoryOption) => (
                   option.isMaterial
                   ?
-                  (option as CategoryOption<true>).suboptions.map((materialSuboption: CategoryMaterialSuboption | undefined, index: number) => (
-                    materialSuboption
+                  (option as CategoryOption<true>).suboptions.map((materialItem: CategoryMaterialItem | undefined, index: number) => (
+                    materialItem
                     ?
-                    <Fragment key={`option-${option.id}-materialsuboption-${materialSuboption.id}`}>
+                    <Fragment key={`option-${option.id}-materialsuboption-${materialItem.id}`}>
                       {
-                        materialSuboption.suboptions.map((suboption: CategorySuboption) => (
-                          <DataListItem key={`option-${option.id}-materialsuboption-${materialSuboption.id}-suboption-${suboption.id}`}>
+                        materialItem.suboptions.map((suboption: CategorySuboption) => (
+                          <DataListItem key={`option-${option.id}-materialsuboption-${materialItem.id}-suboption-${suboption.id}`}>
                             <DataListItemLabel>{`${option.name}${option.suboptions.length > 1 ? ` ${index + 1}` : ""}`}</DataListItemLabel>
                             <DataListItemValue justifyContent="flex-end">{suboption.name}</DataListItemValue>
                           </DataListItem>
