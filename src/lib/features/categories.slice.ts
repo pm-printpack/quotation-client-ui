@@ -128,7 +128,8 @@ export const categoriesSlice = createSlice({
           const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
           for (let j: number = 0; j < selectedMaterialItems.length; ++j) {
             const materialItem: CategoryMaterialItem | undefined = materialItems[j];
-            if (selectedMaterialItems[j] && materialItem && !materialItem.shown) {
+            const selectedMaterialItem: CategoryMaterialItem | undefined = selectedMaterialItems[j];
+            if (selectedMaterialItem && selectedMaterialItem.suboptions.length > 0 && materialItem && !materialItem.shown) {
               materialItem.shown = true;
               hasChanged = true;
             }
