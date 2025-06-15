@@ -113,6 +113,32 @@ export const categoriesSlice = createSlice({
   name: "categories",
   initialState: initialState,
   reducers: {
+    showMaterialItemsBySelectedOptions: (state: CategoriesState, action: PayloadAction<CategoryOption[]>) => {
+      const options: CategoryOption[] = state.options;
+      const selectedOptions: CategoryOption[] = action.payload;
+      let hasChanged: boolean = false;
+      for (let i: number = 0; i < selectedOptions.length; ++i) {
+        const selectedOption: CategoryOption = selectedOptions[i];
+        const option: CategoryOption | undefined = options.find((option: CategoryOption) => option.id === selectedOption.id);
+        if (!option) {
+          continue;
+        }
+        if (selectedOption.isMaterial && option.isMaterial) {
+          const selectedMaterialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
+          const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+          for (let j: number = 0; j < selectedMaterialItems.length; ++j) {
+            const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+            if (selectedMaterialItems[j] && materialItem && !materialItem.shown) {
+              materialItem.shown = true;
+              hasChanged = true;
+            }
+          }
+        }
+      }
+      if (hasChanged) {
+        state.options = [...state.options];
+      }
+    },
     showMaterialItem1By1: (state: CategoriesState, action: PayloadAction<number>) => {
       const optionId: number = action.payload;
       const option: CategoryOption | undefined = state.options.find((option: CategoryOption) => option.id === optionId);
@@ -188,6 +214,7 @@ export const categoriesSlice = createSlice({
 });
 
 export const {
+  showMaterialItemsBySelectedOptions,
   showMaterialItem1By1,
   hideMaterialItem
 } = categoriesSlice.actions;

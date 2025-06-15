@@ -10,7 +10,8 @@ import {
 	CategoryMaterialItem,
 	hideMaterialItem,
 	showMaterialItem1By1,
-	CategoryMaterialSuboption
+	CategoryMaterialSuboption,
+  showMaterialItemsBySelectedOptions
 } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
@@ -138,6 +139,7 @@ export default function Home() {
 		useState<boolean>(false);
 	const [suggestedSKUs, isSuggestedSKUs] = useState<boolean[]>([]);
 	const [numOfMatchedModulus, setNumOfMatchedModulus] = useState<number>();
+  const [formattedSelectedOptions, setFormattedSelectedOptions] = useState<CategoryOption[]>([]);
 	const {
 		control,
 		handleSubmit,
@@ -248,13 +250,12 @@ export default function Home() {
 						const materialItems: (CategoryMaterialItem | undefined)[] = (
 							option as CategoryOption<true>
 						).suboptions;
-						for (let j: number = 0; j < selectedMaterialItems.length; ++j) {
-							// layers
+						for (let j: number = 0; j < selectedMaterialItems.length; ++j) { // layers
 							const selectedMaterialItem: CategoryMaterialItem | undefined =
 								selectedMaterialItems[j];
 							const materialItem: CategoryMaterialItem | undefined =
 								materialItems[j];
-							if (materialItem && materialItem.shown) {
+							if (materialItem) {
 								if (selectedMaterialItem) {
 									const selectedSuboptions: CategoryMaterialSuboption[] =
 										selectedMaterialItem.suboptions;
@@ -294,9 +295,7 @@ export default function Home() {
 					selectedOptions[i] = undefined;
 				}
 			}
-			console.log("selectedOptions: ", selectedOptions);
-			console.log("selectedOptionRecords: ", selectedOptionRecords);
-			return Object.values(selectedOptionRecords);
+			return selectedOptions.filter((option: CategoryOption<boolean> | undefined) => !!option);
 		}, [selectedOptionRecords, options]);
 
 	const onSubmit = useCallback(
@@ -318,6 +317,10 @@ export default function Home() {
 				}
 				const formattedSelectedOptions: CategoryOption<boolean>[] =
 					filterAndFormatSelectedOptionRecords();
+        console.log("formattedSelectedOptions: ", formattedSelectedOptions);
+        console.log("selectedOptionRecords: ", selectedOptionRecords);
+        setFormattedSelectedOptions(formattedSelectedOptions);
+        dispatch(showMaterialItemsBySelectedOptions(formattedSelectedOptions));
 				if (selectedPrintingType.name.toLowerCase() === "digital printing") {
 					dispatch(
 						calculateTotalPriceByDigitalPrinting({
@@ -385,6 +388,7 @@ export default function Home() {
 			selectedProductSubcategoryId,
 			printingTypes,
 			selectedPrintingTypeId,
+      selectedOptionRecords,
 			filterAndFormatSelectedOptionRecords
 		]
 	);
@@ -401,7 +405,6 @@ export default function Home() {
 	const onDeleteBaseCase = useCallback(
 		(index: number) => {
 			return () => {
-				console.log("index: ", index);
 				removeCase(index);
 				handleSubmit(onSubmit)();
 			};
@@ -1569,7 +1572,7 @@ export default function Home() {
 									{formValues?.width || 0}mm x {formValues?.height || 0}mm
 								</DataListItemValue>
 							</DataListItem>
-							{Object.values(selectedOptionRecords).map(
+							{formattedSelectedOptions.map(
 								(option: CategoryOption) =>
 									option.isMaterial ? (
 										(option as CategoryOption<true>).suboptions.map(
