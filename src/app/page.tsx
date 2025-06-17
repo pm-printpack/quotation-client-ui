@@ -326,7 +326,7 @@ export default function Home() {
 						calculateTotalPriceByDigitalPrinting({
 							width: values.width,
 							height: values.height,
-							gusset: values.gusset,
+							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
 							options: formattedSelectedOptions
 						})
@@ -352,7 +352,7 @@ export default function Home() {
 						calculateTotalPriceByOffsetPrinting({
 							width: values.width,
 							height: values.height,
-							gusset: values.gusset,
+							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
 							numOfMatchedModulus: numOfMatchedModulus,
 							options: formattedSelectedOptions
@@ -365,7 +365,7 @@ export default function Home() {
 						calculateTotalPriceByGravurePrinting({
 							width: values.width,
 							height: values.height,
-							gusset: values.gusset,
+							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
 							options: formattedSelectedOptions,
 							selectedProductSubcategoryId: selectedProductSubcategoryId
@@ -385,6 +385,7 @@ export default function Home() {
 			setFormValues(values);
 		},
 		[
+			hasGusset,
 			selectedProductSubcategoryId,
 			printingTypes,
 			selectedPrintingTypeId,
@@ -1083,7 +1084,6 @@ export default function Home() {
 										control={control}
 										render={({ field }) => (
 											<NumberInputRoot
-												defaultValue="1"
 												min={1}
 												bg="bg.panel"
 												w={{ base: "full" }}
@@ -1092,7 +1092,7 @@ export default function Home() {
 												value={`${field.value}`}
 												onValueChange={useDebouncedCallback(
 													({ valueAsNumber }) => {
-														field.onChange(valueAsNumber || 1);
+														field.onChange(valueAsNumber || "");
 														if (!isMobile) {
 															handleSubmit(onSubmit)();
 														}
@@ -1130,7 +1130,6 @@ export default function Home() {
 										control={control}
 										render={({ field }) => (
 											<NumberInputRoot
-												defaultValue="1"
 												min={1}
 												bg="bg.panel"
 												w={{ base: "full" }}
@@ -1139,7 +1138,7 @@ export default function Home() {
 												value={`${field.value}`}
 												onValueChange={useDebouncedCallback(
 													({ valueAsNumber }) => {
-														field.onChange(valueAsNumber || 1);
+														field.onChange(valueAsNumber || "");
 														if (!isMobile) {
 															handleSubmit(onSubmit)();
 														}
@@ -1179,7 +1178,6 @@ export default function Home() {
 												control={control}
 												render={({ field }) => (
 													<NumberInputRoot
-														defaultValue="1"
 														min={1}
 														bg="bg.panel"
 														w={{ base: "full" }}
@@ -1188,7 +1186,7 @@ export default function Home() {
 														value={`${field.value}`}
 														onValueChange={useDebouncedCallback(
 															({ valueAsNumber }) => {
-																field.onChange(valueAsNumber || 1);
+																field.onChange(valueAsNumber || "");
 																if (!isMobile) {
 																	handleSubmit(onSubmit)();
 																}
@@ -1569,7 +1567,7 @@ export default function Home() {
 							<DataListItem>
 								<DataListItemLabel>Size</DataListItemLabel>
 								<DataListItemValue justifyContent="flex-end">
-									{formValues?.width || 0}mm x {formValues?.height || 0}mm
+									{formValues?.width || 0}mm x {formValues?.height || 0}mm{hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}
 								</DataListItemValue>
 							</DataListItem>
 							{formattedSelectedOptions.map(
