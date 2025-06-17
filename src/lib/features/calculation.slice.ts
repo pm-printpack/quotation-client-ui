@@ -63,6 +63,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       const materialCost: number = materialArea * totalMaterialUnitPricePerSquareMeter;
       console.log("printingLengthPerPackage: ", printingLengthPerPackage);
       console.log("materialWidth: ", materialWidth);
+      console.log("totalMaterialUnitPricePerSquareMeter: ", totalMaterialUnitPricePerSquareMeter);
       console.log("materialArea: ", materialArea);
       console.log("materialCost: ", materialCost);
 
@@ -122,9 +123,8 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       let numOfPlate: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
-        if (!option.isMaterial && ["color", "production process"].includes(option.name.toLocaleLowerCase())) {
-          // const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-          numOfPlate += ((option as CategoryOption<false>).suboptions || []).filter((suboption: CategorySuboption) => !!suboption).length;
+        if (!option.isMaterial && option.name.toLocaleLowerCase() === "color") {
+          numOfPlate = Number(((option as CategoryOption<false>).suboptions[0].name.match(/(\d+)\s*colors?/) || [])[1] || 0);
         }
       }
       const plateFee: number = numOfPlate * 450;
