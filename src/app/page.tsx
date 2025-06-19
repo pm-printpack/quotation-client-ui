@@ -514,7 +514,7 @@ export default function Home() {
 							suboptions: []
 						};
 					}
-					if (materialItem && materialItem.shown) {
+					if (materialItem && materialItem.isVisible) {
 						const selectedSuboption: CategoryMaterialSuboption | undefined =
 							materialItem.suboptions.find(
 								(suboption: CategorySuboption) =>
@@ -683,7 +683,7 @@ export default function Home() {
 							materialItem: CategoryMaterialItem | undefined,
 							suboptionIndex: number
 						) => {
-							if (!materialItem || !materialItem.shown) {
+							if (!materialItem || !materialItem.isVisible) {
 								return undefined;
 							}
 							return (
@@ -761,7 +761,7 @@ export default function Home() {
 									</RadioCardRoot>
 									{option.suboptions.filter(
 										(materialItem: CategoryMaterialItem | undefined) =>
-											materialItem?.shown
+											materialItem?.isVisible
 									).length > 1 ? (
 										<CloseButton
 											size="sm"
@@ -780,7 +780,7 @@ export default function Home() {
 					)}
 					{option.suboptions.length > 1 &&
 					option.suboptions.filter(
-						(suboption: CategoryMaterialItem | undefined) => suboption?.shown
+						(suboption: CategoryMaterialItem | undefined) => suboption?.isVisible
 					).length < option.suboptions.length ? (
 						<Button
 							variant="subtle"
@@ -1459,7 +1459,7 @@ export default function Home() {
 										option.suboptions.length > 0 &&
 										(option as CategoryOption<true>).suboptions.filter(
 											(suboption: CategoryMaterialItem | undefined) =>
-												suboption?.shown
+												suboption?.isVisible
 										).length > 0) ? (
 									<FieldRoot
 										orientation={{ base: "vertical", md: "horizontal" }}

@@ -18,7 +18,7 @@ export interface PrintingType extends Category {}
 
 export interface CategoryMaterialItem {
   id: number;
-  shown: boolean;
+  isVisible: boolean;
   suboptions: CategoryMaterialSuboption[];
 }
 
@@ -129,8 +129,8 @@ export const categoriesSlice = createSlice({
           for (let j: number = 0; j < selectedMaterialItems.length; ++j) {
             const materialItem: CategoryMaterialItem | undefined = materialItems[j];
             const selectedMaterialItem: CategoryMaterialItem | undefined = selectedMaterialItems[j];
-            if (selectedMaterialItem && selectedMaterialItem.suboptions.length > 0 && materialItem && !materialItem.shown) {
-              materialItem.shown = true;
+            if (selectedMaterialItem && selectedMaterialItem.suboptions.length > 0 && materialItem && !materialItem.isVisible) {
+              materialItem.isVisible = true;
               hasChanged = true;
             }
           }
@@ -147,8 +147,8 @@ export const categoriesSlice = createSlice({
         const suboptions: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
         for (let i: number = 0; i < suboptions.length; ++i) {
           const suboption: CategoryMaterialItem | undefined = suboptions[i];
-          if (suboption && !suboption.shown) {
-            suboption.shown = true;
+          if (suboption && !suboption.isVisible) {
+            suboption.isVisible = true;
             state.options = [...state.options];
             break;
           }
@@ -161,7 +161,7 @@ export const categoriesSlice = createSlice({
       if (option && option.isMaterial) {
         const materialItem: CategoryMaterialItem | undefined = (option as CategoryOption<true>).suboptions.find((suboption: CategoryMaterialItem | undefined) => suboption?.id === suboptionId);
         if (materialItem) {
-          materialItem.shown = false;
+          materialItem.isVisible = false;
           state.options = [...state.options];
         }
       }
@@ -194,13 +194,13 @@ export const categoriesSlice = createSlice({
               if (!suboptions) {
                 return {
                   id: index,
-                  shown: false,
+                  isVisible: false,
                   suboptions: []
                 };
               }
               return {
                 id: index,
-                shown: suboptions.length > 0 && index === 0,
+                isVisible: suboptions.length > 0 && index === 0,
                 suboptions: suboptions
               };
             })
