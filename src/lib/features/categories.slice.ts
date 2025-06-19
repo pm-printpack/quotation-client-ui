@@ -12,6 +12,7 @@ interface Category{
 
 export interface ProductSubcategory extends Category {
   hasGusset: boolean;
+  isVisible: boolean;
 }
 
 export interface PrintingType extends Category {}
