@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./features/auth.slice";
 import categoriesReducer from "./features/categories.slice";
 import calculationReducer from "./features/calculation.slice";
+import customersReducer from "./features/customers.slice";
 import environmentReducer from "./features/environment.slice";
 
 export const makeStore = () => {
@@ -9,6 +10,7 @@ export const makeStore = () => {
     reducer: {
       auth: authReducer,
       categories: categoriesReducer,
+      customers: customersReducer,
       calculation: calculationReducer,
       env: environmentReducer
     }
