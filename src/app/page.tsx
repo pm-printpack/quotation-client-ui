@@ -668,6 +668,25 @@ export default function Home() {
 		[getSelectedValueOfNonMaterialItem, clearSelectedNonMaterialSuboption]
 	);
 
+	const hasBeenSelectedOnMaterialSuboption = useCallback((optionId: number, materialItemId: number, suboptionId: number): boolean => {
+		for (const selectedOption of Object.values(selectedOptionRecords)) {
+			if (selectedOption.isMaterial) {
+				const materialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
+				for (const materialItem of materialItems) {
+					if (materialItem && materialItem.suboptions.length > 0) {
+						if (materialItem.suboptions.some((suboption: CategoryMaterialSuboption) => suboption?.id === suboptionId)) {
+							if (selectedOption.id === optionId && materialItem.id === materialItemId) {
+								return false;
+							}
+							return true;
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}, [selectedOptionRecords]);
+
 	const renderMaterialItemArea = useCallback(
 		(option: CategoryOption<true>, index: number) => {
 			return (
@@ -742,6 +761,7 @@ export default function Home() {
 														key={`suboption-${suboption.id}`}
 														value={`${suboption.id}`}
 														className={styles.radioCardItem}
+														disabled={hasBeenSelectedOnMaterialSuboption(option.id, materialItem.id, suboption.id)}
 														onClick={onUnselectedMaterialItem(
 															option,
 															materialItem,
@@ -798,7 +818,8 @@ export default function Home() {
 			getSelectedValueOfMaterialItem,
 			onDeleteMaterialCategorySuboption,
 			onAddMaterialCategorySuboption,
-			onUnselectedMaterialItem
+			onUnselectedMaterialItem,
+			hasBeenSelectedOnMaterialSuboption
 		]
 	);
 

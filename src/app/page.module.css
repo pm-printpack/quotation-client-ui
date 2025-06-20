@@ -5,3 +5,8 @@
 /* .radioCardItem:is([data-state="checked"]) {
   background-color: var(--mix-background, var(--chakra-colors-color-palette-muted))
 } */
+
+.radioCardItem:is(:disabled, [disabled], [data-disabled], [aria-disabled="true"]) {
+  cursor: var(--chakra-cursor-disabled);
+  opacity: 0.5;
+}
