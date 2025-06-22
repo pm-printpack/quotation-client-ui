@@ -25,6 +25,10 @@ import {
 	Box,
 	Button,
 	Center,
+	ClipboardCopyText,
+	ClipboardIndicator,
+	ClipboardRoot,
+	ClipboardTrigger,
 	CloseButton,
 	DataListItem,
 	DataListItemLabel,
@@ -66,7 +70,7 @@ import {
 	useBreakpointValue,
 	VStack
 } from "@chakra-ui/react";
-import { Fragment, MouseEvent, useCallback, useEffect, useState } from "react";
+import { Fragment, FragmentInstance, MouseEvent, Ref, RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
@@ -165,6 +169,7 @@ export default function Home() {
 		control,
 		name: "cases"
 	});
+	const quotationResultRef: Ref<HTMLDivElement> = useRef(null);
 
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
@@ -669,21 +674,21 @@ export default function Home() {
 	);
 
 	const hasBeenSelectedOnMaterialSuboption = useCallback((optionId: number, materialItemId: number, suboptionId: number): boolean => {
-		for (const selectedOption of Object.values(selectedOptionRecords)) {
-			if (selectedOption.isMaterial) {
-				const materialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
-				for (const materialItem of materialItems) {
-					if (materialItem && materialItem.suboptions.length > 0) {
-						if (materialItem.suboptions.some((suboption: CategoryMaterialSuboption) => suboption?.id === suboptionId)) {
-							if (selectedOption.id === optionId && materialItem.id === materialItemId) {
-								return false;
-							}
-							return true;
-						}
-					}
-				}
-			}
-		}
+		// for (const selectedOption of Object.values(selectedOptionRecords)) {
+		// 	if (selectedOption.isMaterial) {
+		// 		const materialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
+		// 		for (const materialItem of materialItems) {
+		// 			if (materialItem && materialItem.suboptions.length > 0) {
+		// 				if (materialItem.suboptions.some((suboption: CategoryMaterialSuboption) => suboption?.id === suboptionId)) {
+		// 					if (selectedOption.id === optionId && materialItem.id === materialItemId) {
+		// 						return false;
+		// 					}
+		// 					return true;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
 		return false;
 	}, [selectedOptionRecords]);
 
@@ -1523,13 +1528,13 @@ export default function Home() {
 					<VStack
 						alignItems="flex-start"
 						position={{ base: "absolute", md: "relative" }}
+						gap={6}
+						w={{ base: "full", md: "25rem" }}
 						bg="bg.panel"
 						top="0"
 						left="0"
 						right="0"
 						bottom="0"
-						p={{ base: "1rem", md: 0 }}
-						w={{ base: "full", md: "25rem" }}
 						data-state="open"
 						_open={{
 							animationName: "fade-in, scale-in",
@@ -1540,127 +1545,142 @@ export default function Home() {
 							animationDuration: "120ms"
 						}}
 					>
-						<Box
-							bg="bg.muted"
+						<VStack
+							alignItems="flex-start"
+							p={{ base: "1rem", md: 0 }}
 							w="full"
-							p="2"
-							borderTopLeftRadius="0.25rem"
-							borderTopRightRadius="0.25rem"
+							ref={quotationResultRef}
 						>
-							<Heading size="md">Quotation Details for</Heading>
-							<Text>
-								<Span textTransform="capitalize">
-									{
-										printingTypes.find(
-											({ id }) => id === selectedPrintingTypeId
-										)?.name
-									}
-								</Span>{" "}
-								of{" "}
-								<Span textTransform="capitalize">{`${
-									productSubcategories.find(
-										({ id }) => id === selectedProductSubcategoryId
-									)?.name
-								}s`}</Span>
-							</Text>
-						</Box>
-						<DataListRoot orientation="horizontal" w="full">
-							<DataListItem>
-								<DataListItemLabel>Product Name</DataListItemLabel>
-								<DataListItemValue justifyContent="flex-end">
-									{
+							<Box
+								bg="bg.muted"
+								w="full"
+								p="2"
+								borderTopLeftRadius="0.25rem"
+								borderTopRightRadius="0.25rem"
+							>
+								<Heading size="md">Quotation Details for</Heading>
+								<Text>
+									<Span textTransform="capitalize">
+										{
+											printingTypes.find(
+												({ id }) => id === selectedPrintingTypeId
+											)?.name
+										}
+									</Span>{" "}
+									of{" "}
+									<Span textTransform="capitalize">{`${
 										productSubcategories.find(
 											({ id }) => id === selectedProductSubcategoryId
 										)?.name
-									}
-								</DataListItemValue>
-							</DataListItem>
-							<DataListItem>
-								<DataListItemLabel>Printing Type</DataListItemLabel>
-								<DataListItemValue justifyContent="flex-end">
-									{
-										printingTypes.find(
-											({ id }) => id === selectedPrintingTypeId
-										)?.name
-									}
-								</DataListItemValue>
-							</DataListItem>
-							<DataListItem>
-								<DataListItemLabel>Size</DataListItemLabel>
-								<DataListItemValue justifyContent="flex-end">
-									{formValues?.width || 0}mm x {formValues?.height || 0}mm{hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}
-								</DataListItemValue>
-							</DataListItem>
-							{formattedSelectedOptions.map(
-								(option: CategoryOption) =>
-									option.isMaterial ? (
-										(option as CategoryOption<true>).suboptions.map(
-											(
-												materialItem: CategoryMaterialItem | undefined,
-												index: number
-											) =>
-												materialItem ? (
-													<Fragment
-														key={`option-${option.id}-materialsuboption-${materialItem.id}`}
-													>
-														{materialItem.suboptions.map(
-															(suboption: CategorySuboption) => (
-																<DataListItem
-																	key={`option-${option.id}-materialsuboption-${materialItem.id}-suboption-${suboption.id}`}
-																>
-																	<DataListItemLabel>{`${option.name}${
-																		option.suboptions.length > 1
-																			? ` ${index + 1}`
-																			: ""
-																	}`}</DataListItemLabel>
-																	<DataListItemValue justifyContent="flex-end">
-																		{suboption.name}
-																	</DataListItemValue>
-																</DataListItem>
-															)
-														)}
-													</Fragment>
-												) : null
+									}s`}</Span>
+								</Text>
+							</Box>
+							<DataListRoot orientation="horizontal" w="full">
+								<DataListItem>
+									<DataListItemLabel>Product Name</DataListItemLabel>
+									<DataListItemValue justifyContent="flex-end">
+										{
+											productSubcategories.find(
+												({ id }) => id === selectedProductSubcategoryId
+											)?.name
+										}
+									</DataListItemValue>
+								</DataListItem>
+								<DataListItem>
+									<DataListItemLabel>Printing Type</DataListItemLabel>
+									<DataListItemValue justifyContent="flex-end">
+										{
+											printingTypes.find(
+												({ id }) => id === selectedPrintingTypeId
+											)?.name
+										}
+									</DataListItemValue>
+								</DataListItem>
+								<DataListItem>
+									<DataListItemLabel>Size</DataListItemLabel>
+									<DataListItemValue justifyContent="flex-end">
+										{formValues?.width || 0}mm x {formValues?.height || 0}mm{hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}
+									</DataListItemValue>
+								</DataListItem>
+								{formattedSelectedOptions.map(
+									(option: CategoryOption) =>
+										option.isMaterial ? (
+											(option as CategoryOption<true>).suboptions.map(
+												(
+													materialItem: CategoryMaterialItem | undefined,
+													index: number
+												) =>
+													materialItem ? (
+														<Fragment
+															key={`option-${option.id}-materialsuboption-${materialItem.id}`}
+														>
+															{materialItem.suboptions.map(
+																(suboption: CategorySuboption) => (
+																	<DataListItem
+																		key={`option-${option.id}-materialsuboption-${materialItem.id}-suboption-${suboption.id}`}
+																	>
+																		<DataListItemLabel>{`${option.name}${
+																			option.suboptions.length > 1
+																				? ` ${index + 1}`
+																				: ""
+																		}`}</DataListItemLabel>
+																		<DataListItemValue justifyContent="flex-end">
+																			{suboption.name}
+																		</DataListItemValue>
+																	</DataListItem>
+																)
+															)}
+														</Fragment>
+													) : null
+											)
+										) : (
+											<DataListItem key={`option-${option.id}`}>
+												<DataListItemLabel>{option.name}</DataListItemLabel>
+												<DataListItemValue justifyContent="flex-end">
+													{(option as CategoryOption<false>).suboptions[0].name}
+												</DataListItemValue>
+											</DataListItem>
 										)
-									) : (
-										<DataListItem key={`option-${option.id}`}>
-											<DataListItemLabel>{option.name}</DataListItemLabel>
-											<DataListItemValue justifyContent="flex-end">
-												{(option as CategoryOption<false>).suboptions[0].name}
-											</DataListItemValue>
-										</DataListItem>
-									)
-							)}
-						</DataListRoot>
-						{formValues.cases.length === 1 ? (
-							<>
-								<Separator w="full" />
-								{renderQutationDetailPanel(formValues.cases[0], 0)}
-							</>
-						) : (
-							<AccordionRoot
-								multiple
-								defaultValue={Array.from(
-									new Array(formValues.cases.length)
-								).map((_, index: number) => `${index}`)}
-							>
-								{formValues.cases.map(
-									(caseItem: BaseCaseFormValues, index: number) => (
-										<AccordionItem key={`case-${index}`} value={`${index}`}>
-											<AccordionItemTrigger>
-												<Span flex="1">Quantity (Option {index + 1})</Span>
-												<AccordionItemIndicator />
-											</AccordionItemTrigger>
-											<AccordionItemContent>
-												<AccordionItemBody>
-													{renderQutationDetailPanel(caseItem, index)}
-												</AccordionItemBody>
-											</AccordionItemContent>
-										</AccordionItem>
-									)
 								)}
-							</AccordionRoot>
-						)}
+							</DataListRoot>
+							{formValues.cases.length === 1 ? (
+								<>
+									<Separator w="full" />
+									{renderQutationDetailPanel(formValues.cases[0], 0)}
+								</>
+							) : (
+								<AccordionRoot
+									multiple
+									defaultValue={Array.from(
+										new Array(formValues.cases.length)
+									).map((_, index: number) => `${index}`)}
+								>
+									{formValues.cases.map(
+										(caseItem: BaseCaseFormValues, index: number) => (
+											<AccordionItem key={`case-${index}`} value={`${index}`}>
+												<AccordionItemTrigger>
+													<Span flex="1">Quantity (Option {index + 1})</Span>
+													<AccordionItemIndicator />
+												</AccordionItemTrigger>
+												<AccordionItemContent>
+													<AccordionItemBody>
+														{renderQutationDetailPanel(caseItem, index)}
+													</AccordionItemBody>
+												</AccordionItemContent>
+											</AccordionItem>
+										)
+									)}
+								</AccordionRoot>
+							)}
+						</VStack>
+						{/* <ClipboardRoot w="full" timeout={1000} value={quotationResultRef.current?.innerText}>
+							<ClipboardTrigger asChild w="full">
+								<Button variant="surface" size="md">
+									<ClipboardIndicator />
+									<ClipboardCopyText />
+								</Button>
+							</ClipboardTrigger>
+						</ClipboardRoot> */}
 						<CloseButton
 							hideFrom="md"
 							size="sm"
