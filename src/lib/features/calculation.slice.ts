@@ -45,17 +45,17 @@ function getPrintingTypeProfitMargin(printingTypeName: string, customerTier: Cus
 }
 
 function calculateProfitMargin(originalPrice: number, printingTypeName: string, customerTier?: CustomerTier): number {
-  // if (!customerTier) {
+  if (!customerTier) {
     return originalPrice;
-  // }
-  // const printingTypeProfitMargin: number = getPrintingTypeProfitMargin(printingTypeName, customerTier);
-  // if (originalPrice <= customerTier.minimumDiscountAmount1) {
-  //   return originalPrice * (1 + printingTypeProfitMargin / 100);
-  // } else if (originalPrice > customerTier.minimumDiscountAmount1 && originalPrice <= customerTier.minimumDiscountAmount2) {
-  //   return originalPrice * (1 + printingTypeProfitMargin / 100 - customerTier.preferentialProfitMargin1 / 100);
-  // } else {
-  //   return originalPrice * (1 + printingTypeProfitMargin / 100 - customerTier.preferentialProfitMargin2 / 100);
-  // }
+  }
+  const printingTypeProfitMargin: number = getPrintingTypeProfitMargin(printingTypeName, customerTier);
+  if (originalPrice <= customerTier.minimumDiscountAmount1) {
+    return originalPrice * (1 + printingTypeProfitMargin / 100);
+  } else if (originalPrice > customerTier.minimumDiscountAmount1 && originalPrice <= customerTier.minimumDiscountAmount2) {
+    return originalPrice * (1 + printingTypeProfitMargin / 100 - customerTier.preferentialProfitMargin1 / 100);
+  } else {
+    return originalPrice * (1 + printingTypeProfitMargin / 100 - customerTier.preferentialProfitMargin2 / 100);
+  }
 }
 
 export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(

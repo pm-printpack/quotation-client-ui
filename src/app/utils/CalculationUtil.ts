@@ -1,4 +1,4 @@
-import { CategoryOption, CategorySuboption } from "@/lib/features/categories.slice";
+import { CategoryMaterialItem, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
 
 const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
   [0,   20,       21,       22,       24,       25,       27],
@@ -73,5 +73,103 @@ export default {
       numOfMatchedModulus: 1,
       perimeter: 0
     };
+  },
+
+  formatQuotationText: (input?: string): string => {
+    if (!input) {
+      return "";
+    }
+    console.log("input: ", input);
+    const lines = input.split("\n").map(line => line.trim()).filter(Boolean);
+
+    const [title, subtitle, ...rest] = lines;
+    const result = [`${title}\n${subtitle}\n`];
+
+    let currentSection = [];
+
+    function processSection(sectionLines: string[]) {
+      const sectionResult: string[] = [];
+
+      for (let i: number = 0; i < sectionLines.length; i += 2) {
+        const key = sectionLines[i];
+        const value = sectionLines[i + 1];
+
+        if (key === "Estimated Delivery Time") {
+          const air: string = sectionLines[i + 1];
+          const sea: string = sectionLines[i + 2];
+          const airMatch: RegExpMatchArray = air.match(/Air Freight:\s*(.+)/) || ["", ""];
+          const seaMatch: RegExpMatchArray = sea.match(/Sea Freight:\s*(.+)/) || ["", ""];
+
+          sectionResult.push(
+            `Estimated Delivery Time: ${airMatch[1]}(Air Freight), ${seaMatch[1]}(Sea Freight)`
+          );
+          i += 2; // Skip extra line
+        } else {
+          sectionResult.push(`${key}: ${value}`);
+        }
+      }
+
+      return sectionResult.join("\n");
+    }
+
+    for (let i: number = 0; i < rest.length; i++) {
+      const line: string = rest[i];
+
+      if (/^Quantity \(Option \d+\)$/.test(line)) {
+        // 遇到新的 Option，处理旧的
+        if (currentSection.length) {
+          result.push(processSection(currentSection));
+          result.push(""); // 空行分隔段落
+          currentSection = [];
+        }
+        // 把 Option 行本身当作 key，空值
+        currentSection.push(line);
+        currentSection.push(""); // 占位符
+      } else {
+        currentSection.push(line);
+      }
+    }
+
+    if (currentSection.length) {
+      result.push(processSection(currentSection));
+    }
+
+    return result.join("\n");
   }
+
+  // getTextQuotationDetail: (
+  //   printingTypes: PrintingType[],
+  //   selectedPrintingTypeId: number,
+  //   productSubcategories: ProductSubcategory[],
+  //   selectedProductSubcategoryId: number,
+  //   formValues: {width?: number, height?: number, gusset?: number},
+  //   hasGusset: boolean,
+  //   selectedOptions: CategoryOption<boolean>[]
+  // ): string => {
+  //   const productName: string = productSubcategories.find(({ id }) => id === selectedProductSubcategoryId)?.name || "";
+  //   const printingType: string = printingTypes.find(({ id }) => id === selectedPrintingTypeId)?.name || "";
+  //   const result: string[] = [
+  //     "Quotation Details for",
+  //     `${printingType} of ${productName}s`,
+  //     "",
+  //     `Product Name: ${productName}`,
+  //     `Printing Type: ${printingType}`,
+  //     `Size: ${formValues?.width || 0}mm x ${formValues?.height || 0}mm${hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}`
+  //   ];
+  //   selectedOptions.forEach((option: CategoryOption) => {
+  //     if (option.isMaterial) {
+  //       (option as CategoryOption<true>).suboptions.forEach((materialItem: CategoryMaterialItem | undefined, index: number) => {
+  //         if (materialItem) {
+  //           materialItem.suboptions.forEach((suboption: CategorySuboption) => {
+  //             const key: string = `${option.name}${option.suboptions.length > 1 ? ` ${index + 1}` : ""}`
+  //             result.push(`${key}: ${suboption.name}`);
+  //           })
+  //         }
+  //       });
+  //     } else {
+  //       result.push(`${option.name}: ${(option as CategoryOption<false>).suboptions[0].name}`);
+  //     }
+  //   })
+  //   return result.join("\n");
+  // }
 };

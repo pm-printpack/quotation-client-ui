@@ -170,6 +170,7 @@ export default function Home() {
 		name: "cases"
 	});
 	const quotationResultRef: Ref<HTMLDivElement> = useRef(null);
+	const [quotationTextResult, setQuotationTextResult] = useState<string>("")
 
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
@@ -398,6 +399,14 @@ export default function Home() {
 			filterAndFormatSelectedOptionRecords
 		]
 	);
+
+	useEffect(() => {
+		setQuotationTextResult(quotationResultRef.current?.innerText || "");
+	}, [formValues]);
+
+	useEffect(() => {
+		setQuotationTextResult(quotationResultRef.current?.innerText || "");
+	}, [selectedOptionRecords]);
 
 	const onAddNewBaseCase = useCallback(() => {
 		appendCase({
@@ -674,21 +683,21 @@ export default function Home() {
 	);
 
 	const hasBeenSelectedOnMaterialSuboption = useCallback((optionId: number, materialItemId: number, suboptionId: number): boolean => {
-		// for (const selectedOption of Object.values(selectedOptionRecords)) {
-		// 	if (selectedOption.isMaterial) {
-		// 		const materialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
-		// 		for (const materialItem of materialItems) {
-		// 			if (materialItem && materialItem.suboptions.length > 0) {
-		// 				if (materialItem.suboptions.some((suboption: CategoryMaterialSuboption) => suboption?.id === suboptionId)) {
-		// 					if (selectedOption.id === optionId && materialItem.id === materialItemId) {
-		// 						return false;
-		// 					}
-		// 					return true;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-		// }
+		for (const selectedOption of Object.values(selectedOptionRecords)) {
+			if (selectedOption.isMaterial) {
+				const materialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
+				for (const materialItem of materialItems) {
+					if (materialItem && materialItem.suboptions.length > 0) {
+						if (materialItem.suboptions.some((suboption: CategoryMaterialSuboption) => suboption?.id === suboptionId)) {
+							if (selectedOption.id === optionId && materialItem.id === materialItemId) {
+								return false;
+							}
+							return true;
+						}
+					}
+				}
+			}
+		}
 		return false;
 	}, [selectedOptionRecords]);
 
@@ -1673,14 +1682,14 @@ export default function Home() {
 								</AccordionRoot>
 							)}
 						</VStack>
-						{/* <ClipboardRoot w="full" timeout={1000} value={quotationResultRef.current?.innerText}>
+						<ClipboardRoot w="full" timeout={1000} value={CalculationUtil.formatQuotationText(quotationTextResult)}>
 							<ClipboardTrigger asChild w="full">
 								<Button variant="surface" size="md">
 									<ClipboardIndicator />
-									<ClipboardCopyText />
+									<ClipboardCopyText copied="Copied Quotation Result" />
 								</Button>
 							</ClipboardTrigger>
-						</ClipboardRoot> */}
+						</ClipboardRoot>
 						<CloseButton
 							hideFrom="md"
 							size="sm"
