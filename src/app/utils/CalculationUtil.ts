@@ -79,20 +79,19 @@ export default {
     if (!input) {
       return "";
     }
-    console.log("input: ", input);
-    const lines = input.split("\n").map(line => line.trim()).filter(Boolean);
+    const lines: string[] = input.split("\n").map(line => line.trim()).filter(Boolean);
 
     const [title, subtitle, ...rest] = lines;
-    const result = [`${title}\n${subtitle}\n`];
+    const result: string[] = [`${title}\n${subtitle}\n`];
 
-    let currentSection = [];
+    let currentSection: string[] = [];
 
-    function processSection(sectionLines: string[]) {
+    function processSection(sectionLines: string[]): string {
       const sectionResult: string[] = [];
 
       for (let i: number = 0; i < sectionLines.length; i += 2) {
-        const key = sectionLines[i];
-        const value = sectionLines[i + 1];
+        const key: string = sectionLines[i];
+        const value: string = sectionLines[i + 1];
 
         if (key === "Estimated Delivery Time") {
           const air: string = sectionLines[i + 1];
@@ -123,7 +122,7 @@ export default {
           currentSection = [];
         }
         // 把 Option 行本身当作 key，空值
-        currentSection.push(line);
+        currentSection.push(`- ${ line }`);
         currentSection.push(""); // 占位符
       } else {
         currentSection.push(line);
