@@ -1554,36 +1554,36 @@ export default function Home() {
 							animationDuration: "120ms"
 						}}
 					>
+						<Box
+							bg="bg.muted"
+							w="full"
+							p="2"
+							borderTopLeftRadius="0.25rem"
+							borderTopRightRadius="0.25rem"
+						>
+							<Heading size="md">Quotation Details for</Heading>
+							<Text>
+								<Span textTransform="capitalize">
+									{
+										printingTypes.find(
+											({ id }) => id === selectedPrintingTypeId
+										)?.name
+									}
+								</Span>{" "}
+								of{" "}
+								<Span textTransform="capitalize">{`${
+									productSubcategories.find(
+										({ id }) => id === selectedProductSubcategoryId
+									)?.name
+								}s`}</Span>
+							</Text>
+						</Box>
 						<VStack
 							alignItems="flex-start"
 							p={{ base: "1rem", md: 0 }}
 							w="full"
 							ref={quotationResultRef}
 						>
-							<Box
-								bg="bg.muted"
-								w="full"
-								p="2"
-								borderTopLeftRadius="0.25rem"
-								borderTopRightRadius="0.25rem"
-							>
-								<Heading size="md">Quotation Details for</Heading>
-								<Text>
-									<Span textTransform="capitalize">
-										{
-											printingTypes.find(
-												({ id }) => id === selectedPrintingTypeId
-											)?.name
-										}
-									</Span>{" "}
-									of{" "}
-									<Span textTransform="capitalize">{`${
-										productSubcategories.find(
-											({ id }) => id === selectedProductSubcategoryId
-										)?.name
-									}s`}</Span>
-								</Text>
-							</Box>
 							<DataListRoot orientation="horizontal" w="full">
 								<DataListItem>
 									<DataListItemLabel>Product Name</DataListItemLabel>

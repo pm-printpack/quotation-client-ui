@@ -80,9 +80,7 @@ export default {
       return "";
     }
     const lines: string[] = input.split("\n").map(line => line.trim()).filter(Boolean);
-
-    const [title, subtitle, ...rest] = lines;
-    const result: string[] = [`${title}\n${subtitle}\n`];
+    const result: string[] = [];
 
     let currentSection: string[] = [];
 
@@ -111,8 +109,8 @@ export default {
       return sectionResult.join("\n");
     }
 
-    for (let i: number = 0; i < rest.length; i++) {
-      const line: string = rest[i];
+    for (let i: number = 0; i < lines.length; i++) {
+      const line: string = lines[i];
 
       if (/^Quantity \(Option \d+\)$/.test(line)) {
         // 遇到新的 Option，处理旧的
