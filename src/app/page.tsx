@@ -70,7 +70,7 @@ import {
 	useBreakpointValue,
 	VStack
 } from "@chakra-ui/react";
-import { Fragment, FragmentInstance, MouseEvent, Ref, RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, FragmentInstance, MouseEvent, Ref, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
@@ -170,7 +170,46 @@ export default function Home() {
 		name: "cases"
 	});
 	const quotationResultRef: Ref<HTMLDivElement> = useRef(null);
-	const [quotationTextResult, setQuotationTextResult] = useState<string>("")
+	const [quotationTextResult, setQuotationTextResult] = useState<string>("");
+
+	const isResultVisible: boolean = useMemo((): boolean => {
+		// To check size area
+		if (!(formValues?.width && formValues?.height && (!hasGusset || formValues?.gusset))) {
+			return false;
+		}
+
+		// To check numbers area
+		if (!(
+			formValues?.cases?.length &&
+			formValues?.cases
+				.map<boolean>(({numOfStyles, quantityPerStyle}) => !!(numOfStyles && quantityPerStyle))
+				.reduce((a: boolean, b: boolean) => a && b)
+		)) {
+			return false;
+		}
+
+		// To check options area
+		const requiredOprions: CategoryOption[] = options.filter(({isRequired}) => isRequired);
+		for (let i: number = 0; i < requiredOprions.length; ++i) {
+			const option: CategoryOption = requiredOprions[i];
+			if (option.isMaterial) {
+				let hasSuboptions: boolean = false;
+				const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+				for (let j: number = 0; j < materialItems.length; ++j) {
+					const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+					hasSuboptions = !!(materialItem && materialItem.suboptions.length > 0);
+				}
+				if (hasSuboptions && !selectedOptionRecords[option.id]) {
+					return false;
+				}
+			} else {
+				if ((option as CategoryOption<false>).suboptions.length > 0 && !selectedOptionRecords[option.id]) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}, [formValues, hasGusset, options, selectedOptionRecords]);
 
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
@@ -402,11 +441,7 @@ export default function Home() {
 
 	useEffect(() => {
 		setQuotationTextResult(quotationResultRef.current?.innerText || "");
-	}, [formValues]);
-
-	useEffect(() => {
-		setQuotationTextResult(quotationResultRef.current?.innerText || "");
-	}, [selectedOptionRecords]);
+	}, [formValues, selectedOptionRecords]);
 
 	const onAddNewBaseCase = useCallback(() => {
 		appendCase({
@@ -1101,13 +1136,15 @@ export default function Home() {
 							borderRadius="0.25rem"
 						>
 							<Stack w="full" direction={{ base: "column", sm: "row" }}>
-								<Text
-									lineHeight={{ sm: "2.5rem" }}
-									w={{ sm: "8.625rem" }}
-									textAlign={{ sm: "right" }}
-								>
-									Size:
-								</Text>
+								<Flex w={{ sm: "8.625rem" }} alignItems="center" justifyContent="flex-end" gap="1">
+									<Text color="red.solid">*</Text>
+									<Text
+										lineHeight={{ sm: "2.5rem" }}
+										textAlign={{ sm: "right" }}
+									>
+										Size:
+									</Text>
+								</Flex>
 								<FieldRoot
 									orientation={{ base: "vertical", md: "horizontal" }}
 									justifyContent="flex-start"
@@ -1284,6 +1321,7 @@ export default function Home() {
 												justifyContent={{ base: "flex-start", sm: "flex-end" }}
 												w={{ base: "full" }}
 											>
+												<Text color="red.solid">*</Text>
 												<Text textAlign="right">
 													Number of Styles in the Same Size:
 												</Text>
@@ -1293,7 +1331,6 @@ export default function Home() {
 												control={control}
 												render={({ field }) => (
 													<NumberInputRoot
-														defaultValue={`${field.value}`}
 														min={1}
 														bg="bg.panel"
 														w={{ base: "full", md: "auto" }}
@@ -1302,7 +1339,7 @@ export default function Home() {
 														value={`${field.value}`}
 														onValueChange={useDebouncedCallback(
 															({ valueAsNumber }) => {
-																field.onChange(valueAsNumber || 1);
+																field.onChange(valueAsNumber || "");
 																setValue(
 																	`cases.${index}.totalQuantity`,
 																	getValues(`cases.${index}.numOfStyles`) *
@@ -1351,14 +1388,14 @@ export default function Home() {
 													}}
 													w={{ base: "full" }}
 												>
-													<Text>Quantity per Style:</Text>
+													<Text color="red.solid">*</Text>
+													<Text textAlign="right">Quantity per Style:</Text>
 												</FieldLabel>
 												<Controller
 													name={`cases.${index}.quantityPerStyle`}
 													control={control}
 													render={({ field }) => (
 														<NumberInputRoot
-															defaultValue={`${field.value}`}
 															min={1}
 															bg="bg.panel"
 															w={{ base: "full" }}
@@ -1367,7 +1404,7 @@ export default function Home() {
 															value={`${field.value}`}
 															onValueChange={useDebouncedCallback(
 																({ valueAsNumber }) => {
-																	field.onChange(valueAsNumber || 1);
+																	field.onChange(valueAsNumber || "");
 																	setValue(
 																		`cases.${index}.totalQuantity`,
 																		getValues(`cases.${index}.numOfStyles`) *
@@ -1505,6 +1542,13 @@ export default function Home() {
 											alignSelf="flex-start"
 											justifyContent="flex-end"
 										>
+											{
+												option.isRequired
+												?
+												<Text color="red.solid">*</Text>
+												:
+												null
+											}
 											<Text fontWeight="bold" lineHeight="2.25rem">
 												{option.name}:
 											</Text>
@@ -1531,175 +1575,179 @@ export default function Home() {
 						</Box>
 					</VStack>
 				)}
-				{formValues?.cases?.length &&
-				formValues?.width &&
-				formValues?.height ? (
-					<VStack
-						alignItems="flex-start"
-						position={{ base: "absolute", md: "relative" }}
-						gap={6}
-						w={{ base: "full", md: "25rem" }}
-						bg="bg.panel"
-						top="0"
-						left="0"
-						right="0"
-						bottom="0"
-						data-state="open"
-						_open={{
-							animationName: "fade-in, scale-in",
-							animationDuration: "300ms"
-						}}
-						_closed={{
-							animationName: "fade-out, scale-out",
-							animationDuration: "120ms"
-						}}
-					>
-						<Box
-							bg="bg.muted"
-							w="full"
-							p="2"
-							borderTopLeftRadius="0.25rem"
-							borderTopRightRadius="0.25rem"
-						>
-							<Heading size="md">Quotation Details for</Heading>
-							<Text>
-								<Span textTransform="capitalize">
-									{
-										printingTypes.find(
-											({ id }) => id === selectedPrintingTypeId
-										)?.name
-									}
-								</Span>{" "}
-								of{" "}
-								<Span textTransform="capitalize">{`${
-									productSubcategories.find(
-										({ id }) => id === selectedProductSubcategoryId
-									)?.name
-								}s`}</Span>
-							</Text>
-						</Box>
+				{
+					(formValues?.cases?.length && isResultVisible)
+					?
+					(
 						<VStack
 							alignItems="flex-start"
-							p={{ base: "1rem", md: 0 }}
-							w="full"
-							ref={quotationResultRef}
+							position={{ base: "absolute", md: "relative" }}
+							gap={6}
+							w={{ base: "full", md: "25rem" }}
+							bg="bg.panel"
+							top="0"
+							left="0"
+							right="0"
+							bottom="0"
+							data-state="open"
+							_open={{
+								animationName: "fade-in, scale-in",
+								animationDuration: "300ms"
+							}}
+							_closed={{
+								animationName: "fade-out, scale-out",
+								animationDuration: "120ms"
+							}}
 						>
-							<DataListRoot orientation="horizontal" w="full">
-								<DataListItem>
-									<DataListItemLabel>Product Name</DataListItemLabel>
-									<DataListItemValue justifyContent="flex-end">
-										{
-											productSubcategories.find(
-												({ id }) => id === selectedProductSubcategoryId
-											)?.name
-										}
-									</DataListItemValue>
-								</DataListItem>
-								<DataListItem>
-									<DataListItemLabel>Printing Type</DataListItemLabel>
-									<DataListItemValue justifyContent="flex-end">
+							<Box
+								bg="bg.muted"
+								w="full"
+								p="2"
+								borderTopLeftRadius="0.25rem"
+								borderTopRightRadius="0.25rem"
+							>
+								<Heading size="md">Quotation Details for</Heading>
+								<Text>
+									<Span textTransform="capitalize">
 										{
 											printingTypes.find(
 												({ id }) => id === selectedPrintingTypeId
 											)?.name
 										}
-									</DataListItemValue>
-								</DataListItem>
-								<DataListItem>
-									<DataListItemLabel>Size</DataListItemLabel>
-									<DataListItemValue justifyContent="flex-end">
-										{formValues?.width || 0}mm x {formValues?.height || 0}mm{hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}
-									</DataListItemValue>
-								</DataListItem>
-								{formattedSelectedOptions.map(
-									(option: CategoryOption) =>
-										option.isMaterial ? (
-											(option as CategoryOption<true>).suboptions.map(
-												(
-													materialItem: CategoryMaterialItem | undefined,
-													index: number
-												) =>
-													materialItem ? (
-														<Fragment
-															key={`option-${option.id}-materialsuboption-${materialItem.id}`}
-														>
-															{materialItem.suboptions.map(
-																(suboption: CategorySuboption) => (
-																	<DataListItem
-																		key={`option-${option.id}-materialsuboption-${materialItem.id}-suboption-${suboption.id}`}
-																	>
-																		<DataListItemLabel>{`${option.name}${
-																			option.suboptions.length > 1
-																				? ` ${index + 1}`
-																				: ""
-																		}`}</DataListItemLabel>
-																		<DataListItemValue justifyContent="flex-end">
-																			{suboption.name}
-																		</DataListItemValue>
-																	</DataListItem>
-																)
-															)}
-														</Fragment>
-													) : null
+									</Span>{" "}
+									of{" "}
+									<Span textTransform="capitalize">{`${
+										productSubcategories.find(
+											({ id }) => id === selectedProductSubcategoryId
+										)?.name
+									}s`}</Span>
+								</Text>
+							</Box>
+							<VStack
+								alignItems="flex-start"
+								p={{ base: "1rem", md: 0 }}
+								w="full"
+								ref={quotationResultRef}
+							>
+								<DataListRoot orientation="horizontal" w="full">
+									<DataListItem>
+										<DataListItemLabel>Product Name</DataListItemLabel>
+										<DataListItemValue justifyContent="flex-end">
+											{
+												productSubcategories.find(
+													({ id }) => id === selectedProductSubcategoryId
+												)?.name
+											}
+										</DataListItemValue>
+									</DataListItem>
+									<DataListItem>
+										<DataListItemLabel>Printing Type</DataListItemLabel>
+										<DataListItemValue justifyContent="flex-end">
+											{
+												printingTypes.find(
+													({ id }) => id === selectedPrintingTypeId
+												)?.name
+											}
+										</DataListItemValue>
+									</DataListItem>
+									<DataListItem>
+										<DataListItemLabel>Size</DataListItemLabel>
+										<DataListItemValue justifyContent="flex-end">
+											{formValues?.width || 0}mm x {formValues?.height || 0}mm{hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}
+										</DataListItemValue>
+									</DataListItem>
+									{formattedSelectedOptions.map(
+										(option: CategoryOption) =>
+											option.isMaterial ? (
+												(option as CategoryOption<true>).suboptions.map(
+													(
+														materialItem: CategoryMaterialItem | undefined,
+														index: number
+													) =>
+														materialItem ? (
+															<Fragment
+																key={`option-${option.id}-materialsuboption-${materialItem.id}`}
+															>
+																{materialItem.suboptions.map(
+																	(suboption: CategorySuboption) => (
+																		<DataListItem
+																			key={`option-${option.id}-materialsuboption-${materialItem.id}-suboption-${suboption.id}`}
+																		>
+																			<DataListItemLabel>{`${option.name}${
+																				option.suboptions.length > 1
+																					? ` ${index + 1}`
+																					: ""
+																			}`}</DataListItemLabel>
+																			<DataListItemValue justifyContent="flex-end">
+																				{suboption.name}
+																			</DataListItemValue>
+																		</DataListItem>
+																	)
+																)}
+															</Fragment>
+														) : null
+												)
+											) : (
+												<DataListItem key={`option-${option.id}`}>
+													<DataListItemLabel>{option.name}</DataListItemLabel>
+													<DataListItemValue justifyContent="flex-end">
+														{(option as CategoryOption<false>).suboptions[0].name}
+													</DataListItemValue>
+												</DataListItem>
 											)
-										) : (
-											<DataListItem key={`option-${option.id}`}>
-												<DataListItemLabel>{option.name}</DataListItemLabel>
-												<DataListItemValue justifyContent="flex-end">
-													{(option as CategoryOption<false>).suboptions[0].name}
-												</DataListItemValue>
-											</DataListItem>
-										)
-								)}
-							</DataListRoot>
-							{formValues.cases.length === 1 ? (
-								<>
-									<Separator w="full" />
-									{renderQutationDetailPanel(formValues.cases[0], 0)}
-								</>
-							) : (
-								<AccordionRoot
-									multiple
-									defaultValue={Array.from(
-										new Array(formValues.cases.length)
-									).map((_, index: number) => `${index}`)}
-								>
-									{formValues.cases.map(
-										(caseItem: BaseCaseFormValues, index: number) => (
-											<AccordionItem key={`case-${index}`} value={`${index}`}>
-												<AccordionItemTrigger>
-													<Span flex="1">Quantity (Option {index + 1})</Span>
-													<AccordionItemIndicator />
-												</AccordionItemTrigger>
-												<AccordionItemContent>
-													<AccordionItemBody>
-														{renderQutationDetailPanel(caseItem, index)}
-													</AccordionItemBody>
-												</AccordionItemContent>
-											</AccordionItem>
-										)
 									)}
-								</AccordionRoot>
-							)}
+								</DataListRoot>
+								{formValues.cases.length === 1 ? (
+									<>
+										<Separator w="full" />
+										{renderQutationDetailPanel(formValues.cases[0], 0)}
+									</>
+								) : (
+									<AccordionRoot
+										multiple
+										defaultValue={Array.from(
+											new Array(formValues.cases.length)
+										).map((_, index: number) => `${index}`)}
+									>
+										{formValues.cases.map(
+											(caseItem: BaseCaseFormValues, index: number) => (
+												<AccordionItem key={`case-${index}`} value={`${index}`}>
+													<AccordionItemTrigger>
+														<Span flex="1">Quantity (Option {index + 1})</Span>
+														<AccordionItemIndicator />
+													</AccordionItemTrigger>
+													<AccordionItemContent>
+														<AccordionItemBody>
+															{renderQutationDetailPanel(caseItem, index)}
+														</AccordionItemBody>
+													</AccordionItemContent>
+												</AccordionItem>
+											)
+										)}
+									</AccordionRoot>
+								)}
+							</VStack>
+							<ClipboardRoot w="full" timeout={1000} value={CalculationUtil.formatQuotationText(quotationTextResult)}>
+								<ClipboardTrigger asChild w="full">
+									<Button variant="surface" size="md">
+										<ClipboardIndicator />
+										<ClipboardCopyText copied="Copied Quotation Result" />
+									</Button>
+								</ClipboardTrigger>
+							</ClipboardRoot>
+							<CloseButton
+								hideFrom="md"
+								size="sm"
+								position="absolute"
+								top="1rem"
+								right="1rem"
+								onClick={() => setFormValues(undefined)}
+							/>
 						</VStack>
-						<ClipboardRoot w="full" timeout={1000} value={CalculationUtil.formatQuotationText(quotationTextResult)}>
-							<ClipboardTrigger asChild w="full">
-								<Button variant="surface" size="md">
-									<ClipboardIndicator />
-									<ClipboardCopyText copied="Copied Quotation Result" />
-								</Button>
-							</ClipboardTrigger>
-						</ClipboardRoot>
-						<CloseButton
-							hideFrom="md"
-							size="sm"
-							position="absolute"
-							top="1rem"
-							right="1rem"
-							onClick={() => setFormValues(undefined)}
-						/>
-					</VStack>
-				) : null}
+					)
+					:
+					null
+				}
 			</Flex>
 		</VStack>
 	);
