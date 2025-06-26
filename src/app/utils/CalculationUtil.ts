@@ -1,7 +1,7 @@
 import { CategoryMaterialItem, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
 
 const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
-  [0,   20,       21,       22,       24,       25,       27],
+  [0,   507.500,  532.900,  558.300,  609.100,  634.500,  685.300],
   [15,  33.833,   35.527,   37.220,   40.607,   42.300,   45.687],
   [14,  36.250,   38.064,   39.879,   43.507,   45.321,   48.950],
   [13,  39.038,   40.992,   42.946,   46.854,   48.808,   52.715],
@@ -37,7 +37,7 @@ export default {
    * 【袋子印刷长度范围】：异形：袋宽+10-20mm；非异形：袋宽+5-15mm
    * 【匹配模数】：按照最接近的尺寸在版辊表里匹配，从小增量优先
    */
-  calculateNumOfMatchedModulus: (width: number, height: number, options: CategoryOption<boolean>[]): {numOfMatchedModulus: number, perimeter: number} => {
+  calculateNumOfMatchedModulus: (width: number, height: number, options: CategoryOption<boolean>[]): {numOfMatchedModulus: number, matchedPerimeter: number} => {
     let printingLengthRange: [number, number] = [width, width];
     let customShaped: boolean = false;
     const productionProcessOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "production process")[0];
@@ -66,12 +66,12 @@ export default {
       const {coordinate} = printingLengthCandidates.sort((a: {coordinate: [number, number], value: number}, b: {coordinate: [number, number], value: number}) => a.value - b.value)[0];
       return {
         numOfMatchedModulus: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[coordinate[0]][0],
-        perimeter: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[0][coordinate[1]]
+        matchedPerimeter: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[0][coordinate[1]]
       };
     }
     return {
       numOfMatchedModulus: 1,
-      perimeter: 0
+      matchedPerimeter: 0
     };
   },
 

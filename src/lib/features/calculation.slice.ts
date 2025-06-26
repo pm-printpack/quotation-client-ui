@@ -1,8 +1,203 @@
-import { ActionReducerMapBuilder, createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { CategoryMaterialItem, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "./categories.slice";
+import { ActionReducerMapBuilder, createAsyncThunk, createSlice, PayloadAction, SerializedError } from "@reduxjs/toolkit";
+import { CategoryMaterialItem, CategoryMaterialSuboption, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "./categories.slice";
 import CalculationUtil from "@/app/utils/CalculationUtil";
 import { RootState } from "../store";
-import { CustomerTier } from "./customers.slice";
+import { Customer, CustomerTier } from "./customers.slice";
+import { useRequest } from "@/hooks/useRequest";
+import { ExhangeRate } from "./environment.slice";
+
+const {post} = useRequest();
+
+interface DigitalPrintingQuotationHistory {
+  /**
+   * 印刷宽度（mm）
+   */
+  printingWidth: number;
+
+  /**
+   * 横向印刷数
+   */
+  horizontalLayoutCount: number;
+
+  /**
+   * 每印袋数
+   */
+  numOfBagsPerImpression: number;
+
+  /**
+   * 印刷长度（m）
+   */
+  printingLength: number;
+
+  /**
+   * 印数
+   */
+  printingQuantity: number;
+}
+
+interface OffsetPrintingQuotationHistory {
+  /**
+   * 匹配模数
+   */
+  numOfMatchedModulus: number;
+
+  /**
+   * 匹配周长
+   */
+  matchedPerimeter: number;
+
+  /**
+   * 倍数
+   */
+  multiple: number;
+
+  /**
+   * 印刷用SKU数
+   */
+  numOfSKUs4Printing: number;
+
+  /**
+   * 材料宽度（mm）
+   */
+  materialWidth: number;
+
+  /**
+   * 印刷宽度（mm）
+   */
+  printingWidth: number;
+
+  /**
+   * 印刷长度（m）
+   */
+  printingLength: number;
+}
+
+interface GravurePrintingQuotationHistory {
+  /**
+   * 材料宽度（mm）
+   */
+  materialWidth: number;
+
+  /**
+   * 版长（mm）
+   */
+  plateLength: number;
+
+  /**
+   * 单袋印刷长/mm
+   */
+  printingLengthPerPackage: number;
+
+  /**
+   * 版周/mm
+   */
+  platePerimeter: number;
+
+  /**
+   * 版费（元）
+   */
+  plateFee: number;
+}
+
+interface NewQuotationHistory {
+  customerId: number;
+  categoryProductSubcategoryId: number;
+  categoryPrintingTypeId: number;
+
+  width: number;
+  height: number;
+  gusset?: number;
+
+  /**
+   * number of SKU
+   */
+  numOfStyles: number;
+
+  /**
+   * quantity of per SKU
+   */
+  quantityPerStyle: number;
+
+  /**
+   * total quantity of SKU
+   */
+  totalQuantity: number;
+
+  categorySuboptions: CategorySuboption[];
+  
+  materials: CategoryMaterialSuboption[];
+
+  /**
+   * 成本总价（元）
+   */
+  totalCostInCNY: number;
+
+  /**
+   * 总价（元）
+   */
+  totalPriceInCNY: number;
+
+  /**
+   * 总价（美元）
+   */
+  totalPriceInUSD: number;
+
+  /**
+   * 记录时的汇率，1美元兑多少RMB
+   */
+  exchangeRateUSDToCNY: number;
+
+  /**
+   * 材料面积（㎡）
+   */
+  materialArea: number;
+
+  /**
+   * 印刷费（元）
+   */
+  printingCost: number;
+
+  /**
+   * 材料费（元）
+   */
+  materialCost: number;
+
+  /**
+   * 复合费（元）
+   */
+  laminationCost: number;
+
+  /**
+   * 制袋费（元）
+   */
+  bagMakingCost: number;
+
+  /**
+   * 刀模费（元）
+   */
+  dieCuttingCost: number;
+
+  /**
+   * 包装费（元）
+   */
+  packagingCost: number;
+
+  /**
+   * 人工费（元）
+   */
+  laborCost: number;
+
+  /**
+   * 文件处理费（元）
+   */
+  fileProcessingFee: number;
+
+  digitalPrinting?: DigitalPrintingQuotationHistory;
+
+  offsetPrinting?: OffsetPrintingQuotationHistory;
+
+  gravurePrinting?: GravurePrintingQuotationHistory;
+}
 
 interface CalculationState {
   loading: boolean;
@@ -28,7 +223,12 @@ export type Size = {
   gusset?: number;
 };
 
-type TotalPriceCalculationParams = Size & { cases: BaseCaseValue[]; options: CategoryOption<boolean>[]; };
+type TotalPriceCalculationParams = Size & {
+  categoryProductSubcategoryId: number;
+  categoryPrintingTypeId: number;
+  cases: BaseCaseValue[];
+  options: CategoryOption<boolean>[];
+};
 type TotalWeightCalculationParams = TotalPriceCalculationParams;
 
 function getPrintingTypeProfitMargin(printingTypeName: string, customerTier: CustomerTier): number {
@@ -61,11 +261,16 @@ function calculateProfitMargin(originalPrice: number, printingTypeName: string, 
 export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(
   "calculation/calculateTotalPriceByDigitalPrinting",
   async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
-    const { width, height, gusset, cases, options } = params;
+    const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, options } = params;
       if (!width || !height) {
         return [];
       }
-      const totalPrices: number[] = [];
+      const user: Customer | undefined = (getState() as RootState).customers.user;
+      if (!user) {
+        return [];
+      }
+      const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
+      const newQuotationHistories: NewQuotationHistory[] = [];
       for (const baseCase of cases) {
         // Printing Cost
         const printingWidth: number = (height + 10) * 2 + (gusset || 0);
@@ -145,21 +350,64 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
         console.log("packagingCost: ", packagingCost);
 
-        totalPrices.push((printingCost + materialCost + laminationCost + bagMakingCost + dieCuttingCost + packagingCost) * 1.08);
+        const totalCostInCNY: number = (printingCost + materialCost + laminationCost + bagMakingCost + dieCuttingCost + packagingCost) * 1.08;
+        const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Digital printing", user.tier);
+
+        newQuotationHistories.push({
+          customerId: user.id,
+          categoryProductSubcategoryId: categoryProductSubcategoryId,
+          categoryPrintingTypeId: categoryPrintingTypeId,
+          width: width,
+          height: width,
+          gusset: gusset,
+          numOfStyles: baseCase.numOfStyles,
+          quantityPerStyle: baseCase.quantityPerStyle,
+          totalQuantity: baseCase.totalQuantity,
+          categorySuboptions: [],
+          materials: [],
+          totalCostInCNY: totalCostInCNY,
+          totalPriceInCNY: totalPriceInCNY,
+          totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
+          exchangeRateUSDToCNY: exchangeRateValue,
+          materialArea: materialArea,
+          printingCost: printingCost,
+          materialCost: materialCost,
+          laminationCost: laminationCost,
+          bagMakingCost: bagMakingCost,
+          dieCuttingCost: dieCuttingCost,
+          packagingCost: packagingCost,
+          laborCost: 0,
+          fileProcessingFee: 0,
+          digitalPrinting: {
+            printingWidth: printingWidth,
+            horizontalLayoutCount: horizontalLayoutCount,
+            numOfBagsPerImpression: numOfBagsPerImpression,
+            printingLength: printingLength,
+            printingQuantity: printingQuantity
+          }
+        });
       }
-      return totalPrices.map((price: number) => calculateProfitMargin(price, "Digital printing", (getState() as RootState).customers.user?.tier));
+
+      // if (user) {
+      //   await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
+      // }
+      return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
   }
 );
 
-export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], TotalPriceCalculationParams & {numOfMatchedModulus: number}>(
+export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], TotalPriceCalculationParams & {numOfMatchedModulus: number; matchedPerimeter:number;}>(
   "calculation/calculateTotalPriceByOffsetPrinting",
-  async (params: TotalPriceCalculationParams & {numOfMatchedModulus: number}, {getState}): Promise<number[]> => {
-    const { width, height, gusset, cases, numOfMatchedModulus, options } = params;
+  async (params: TotalPriceCalculationParams & {numOfMatchedModulus: number; matchedPerimeter: number;}, {getState}): Promise<number[]> => {
+    const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, numOfMatchedModulus, matchedPerimeter, options } = params;
     if (!width || !height) {
       return [];
     }
-    console.log("numOfMatchedModulus: ", numOfMatchedModulus);
-    const totalPrices: number[] = [];
+    const user: Customer | undefined = (getState() as RootState).customers.user;
+    if (!user) {
+      return [];
+    }
+    const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
+    const newQuotationHistories: NewQuotationHistory[] = [];
     for (const baseCase of cases) {
       // Printing Cost
       const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / numOfMatchedModulus) * numOfMatchedModulus;
@@ -198,7 +446,7 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         throw new Error("For unconventional widths, please ask the salesperson to confirm the quotation.");
       }
       const materialArea: number = materialWidth * printingLength / 1000;
-      let materialPrice: number = 0;
+      let materialCost: number = 0;
       const materialChineseNames: string[] = [];
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
@@ -216,14 +464,14 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         }
       }
       if (materialChineseNames.find((name: string) => ["触感膜", "拉丝膜"].includes(name))) {
-        materialPrice = 3.5 * materialArea;
+        materialCost = 3.5 * materialArea;
       } else {
-        materialPrice = 3 * materialArea;
+        materialCost = 3 * materialArea;
       }
       console.log("printingWidth: ", printingWidth);
       console.log("materialWidth: ", materialWidth);
       console.log("materialArea: ", materialArea);
-      console.log("materialPrice: ", materialPrice);
+      console.log("materialCost: ", materialCost);
 
       // Bag Making Cost
       let bagMakingCost: number = 0;
@@ -260,20 +508,65 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
       const fileProcessingFee: number = baseCase.numOfStyles * 50;
       console.log("fileProcessingFee: ", fileProcessingFee);
 
-      totalPrices.push((printingCost + materialPrice + bagMakingCost + dieCuttingCost + laborCost + packagingCost + fileProcessingFee) * 1.08);
+      const totalCostInCNY: number = (printingCost + materialCost + bagMakingCost + dieCuttingCost + laborCost + packagingCost + fileProcessingFee) * 1.08;
+      const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Offset printing", user.tier);
+
+      newQuotationHistories.push({
+        customerId: user.id,
+        categoryProductSubcategoryId: categoryProductSubcategoryId,
+        categoryPrintingTypeId: categoryPrintingTypeId,
+        width: width,
+        height: width,
+        gusset: gusset,
+        numOfStyles: baseCase.numOfStyles,
+        quantityPerStyle: baseCase.quantityPerStyle,
+        totalQuantity: baseCase.totalQuantity,
+        categorySuboptions: [],
+        materials: [],
+        totalCostInCNY: totalCostInCNY,
+        totalPriceInCNY: totalPriceInCNY,
+        totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
+        exchangeRateUSDToCNY: exchangeRateValue,
+        materialArea: materialArea,
+        printingCost: printingCost,
+        materialCost: materialCost,
+        laminationCost: 0,
+        bagMakingCost: bagMakingCost,
+        dieCuttingCost: dieCuttingCost,
+        packagingCost: packagingCost,
+        laborCost: laborCost,
+        fileProcessingFee: fileProcessingFee,
+        offsetPrinting: {
+          numOfMatchedModulus: numOfMatchedModulus,
+          matchedPerimeter: matchedPerimeter,
+          multiple: Math.floor(baseCase.numOfStyles / numOfMatchedModulus),
+          numOfSKUs4Printing: numOfSKUs4Printing,
+          printingWidth: printingWidth,
+          materialWidth: materialWidth,
+          printingLength: printingLength
+        }
+      });
     }
-    return totalPrices.map((price: number) => calculateProfitMargin(price, "Offset printing", (getState() as RootState).customers.user?.tier));
+    // if (user) {
+    //   await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
+    // }
+    return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
   }
 );
 
-export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], TotalPriceCalculationParams & { selectedProductSubcategoryId: number }>(
+export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(
   "calculation/calculateTotalPriceByGravurePrinting",
-  async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
-    const { width, height, gusset, cases, options, selectedProductSubcategoryId } = params;
+  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+    const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, options } = params;
     if (!width || !height) {
       return [];
     }
-    const totalPrices: number[] = [];
+    const user: Customer | undefined = (getState() as RootState).customers.user;
+    if (!user) {
+      return [];
+    }
+    const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
+    const newQuotationHistories: NewQuotationHistory[] = [];
     for (const baseCase of cases) {
       // Material Cost
       const printingLengthPerPackage: number = (width + 2.5) * 2;
@@ -328,7 +621,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
 
       // Bag Making Cost
       const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
-      const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)[0];
+      const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === categoryProductSubcategoryId)[0];
       let totalProductionProcessUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
@@ -370,26 +663,75 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
       console.log("packagingCost: ", packagingCost);
 
-      console.log("isSelectedsquareBottomBag: ", isSelectedsquareBottomBag);
-      if (isSelectedsquareBottomBag) {
-        totalPrices.push(1.55 * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost);
+      // Plate Length
+      let plateLength: number = 0;
+      if (materialWidth <= 600) {
+        plateLength = 650;
+      } else if (materialWidth <= 700) {
+        plateLength = 750;
+      } else if (materialWidth <= 800) {
+        plateLength = 850;
+      } else if (materialWidth <= 900) {
+        plateLength = 950;
+      } else if (materialWidth <= 1050) {
+        plateLength = 1100;
       } else {
-        totalPrices.push(1.35 * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost);
+        throw new Error("The plate length met an error.");
       }
+
+      console.log("isSelectedsquareBottomBag: ", isSelectedsquareBottomBag);
+      const totalCostInCNY: number = (isSelectedsquareBottomBag ? 1.55 : 1.35) * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost;
+      const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Gravure printing", user?.tier);
+      newQuotationHistories.push({
+        customerId: user.id,
+        categoryProductSubcategoryId: categoryProductSubcategoryId,
+        categoryPrintingTypeId: categoryPrintingTypeId,
+        width: width,
+        height: width,
+        gusset: gusset,
+        numOfStyles: baseCase.numOfStyles,
+        quantityPerStyle: baseCase.quantityPerStyle,
+        totalQuantity: baseCase.totalQuantity,
+        categorySuboptions: [],
+        materials: [],
+        totalCostInCNY: totalCostInCNY,
+        totalPriceInCNY: totalPriceInCNY,
+        totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
+        exchangeRateUSDToCNY: exchangeRateValue,
+        materialArea: materialArea,
+        printingCost: printingCost,
+        materialCost: materialCost,
+        laminationCost: laminationCost,
+        bagMakingCost: bagMakingCost,
+        dieCuttingCost: 0,
+        packagingCost: packagingCost,
+        laborCost: 0,
+        fileProcessingFee: 0,
+        gravurePrinting: {
+          materialWidth: materialWidth,
+          plateLength: plateLength,
+          printingLengthPerPackage: printingLengthPerPackage,
+          platePerimeter: Math.min(Math.ceil(400 / printingLengthPerPackage) * printingLengthPerPackage, 800),
+          plateFee: plateFee
+        }
+      });
     }
-    return totalPrices.map((price: number) => calculateProfitMargin(price, "Gravure printing", (getState() as RootState).customers.user?.tier));
+    // if (user) {
+    //   await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
+    // }
+    return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
   }
 );
 
-export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalculationParams & { selectedProductSubcategoryId: number }>(
+export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalculationParams>(
   "calculation/calculateTotalWeight",
-  async (params: TotalPriceCalculationParams & { selectedProductSubcategoryId: number }, {getState}): Promise<number[]> => {
-    const { width, height, cases, options, selectedProductSubcategoryId } = params;
+  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+    const { categoryProductSubcategoryId, width, height, cases, options } = params;
     if (!width || !height) {
       return cases.map(() => 0);
     }
     const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
-    const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === selectedProductSubcategoryId)[0];
+    const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === categoryProductSubcategoryId)[0];
     if (selectedProductSubcategory) {
       let surfaceDensity: number = 0;
       for (const option of options) {
@@ -444,6 +786,9 @@ export const calculationSlice = createSlice({
     [calculateTotalPriceByDigitalPrinting, calculateTotalPriceByGravurePrinting].forEach((asyncThunk) => {
       builder.addCase(asyncThunk.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
         state.totalPrices = action.payload;
+      });
+      builder.addCase(asyncThunk.rejected, (state: CalculationState, action: PayloadAction<unknown, string, unknown, SerializedError>) => {
+        console.error("calculation slice error: ", action.error);
       });
     });
     builder.addCase(calculateTotalWeight.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {

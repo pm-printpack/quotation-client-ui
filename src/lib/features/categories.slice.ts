@@ -85,10 +85,10 @@ export const fetchAllProductSubcategories = createAsyncThunk<ProductSubcategory[
   }
 );
 
-export const fetchAllPrintingTypes = createAsyncThunk<PrintingType[], void>(
+export const fetchPrintingTypesByProductSubcategoryId = createAsyncThunk<PrintingType[], number>(
   "categories/fetchAllPrintingTypes",
-  async (): Promise<PrintingType[]> => {
-    const {data, error} = await get<{}, PrintingType[]>("/categories/printing-types");
+  async (categoryProductSubcategoryId: number): Promise<PrintingType[]> => {
+    const {data, error} = await get<{}, PrintingType[]>(`/categories/printing-types/${categoryProductSubcategoryId}`);
     if (error) {
       throw error;
     }
@@ -171,7 +171,7 @@ export const categoriesSlice = createSlice({
     }
   },
   extraReducers: (builder: ActionReducerMapBuilder<CategoriesState>) => {
-    [fetchAllProductSubcategories, fetchAllPrintingTypes, fetchCategoryOptions].forEach((asyncThunk) => {
+    [fetchAllProductSubcategories, fetchPrintingTypesByProductSubcategoryId, fetchCategoryOptions].forEach((asyncThunk) => {
       builder.addCase(asyncThunk.pending, (state: CategoriesState) => {
         state.loading = true;
       });
@@ -184,7 +184,7 @@ export const categoriesSlice = createSlice({
       state.productSubcategories = action.payload;
       state.loading = false;
     });
-    builder.addCase(fetchAllPrintingTypes.fulfilled, (state: CategoriesState, action: PayloadAction<PrintingType[]>) => {
+    builder.addCase(fetchPrintingTypesByProductSubcategoryId.fulfilled, (state: CategoriesState, action: PayloadAction<PrintingType[]>) => {
       state.printingTypes = action.payload;
       state.loading = false;
     });

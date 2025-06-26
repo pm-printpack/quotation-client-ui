@@ -1,6 +1,5 @@
 "use client";
 import {
-	fetchAllPrintingTypes,
 	fetchAllProductSubcategories,
 	fetchCategoryOptions,
 	CategoryOption,
@@ -11,7 +10,8 @@ import {
 	hideMaterialItem,
 	showMaterialItem1By1,
 	CategoryMaterialSuboption,
-  showMaterialItemsBySelectedOptions
+  showMaterialItemsBySelectedOptions,
+	fetchPrintingTypesByProductSubcategoryId
 } from "@/lib/features/categories.slice";
 import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
@@ -70,7 +70,7 @@ import {
 	useBreakpointValue,
 	VStack
 } from "@chakra-ui/react";
-import { Fragment, FragmentInstance, MouseEvent, Ref, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, MouseEvent, Ref, useCallback, useEffect, useRef, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
@@ -172,54 +172,16 @@ export default function Home() {
 	const quotationResultRef: Ref<HTMLDivElement> = useRef(null);
 	const [quotationTextResult, setQuotationTextResult] = useState<string>("");
 
-	const isResultVisible: boolean = useMemo((): boolean => {
-		// To check size area
-		if (!(formValues?.width && formValues?.height && (!hasGusset || formValues?.gusset))) {
-			return false;
-		}
-
-		// To check numbers area
-		if (!(
-			formValues?.cases?.length &&
-			formValues?.cases
-				.map<boolean>(({numOfStyles, quantityPerStyle}) => !!(numOfStyles && quantityPerStyle))
-				.reduce((a: boolean, b: boolean) => a && b)
-		)) {
-			return false;
-		}
-
-		// To check options area
-		const requiredOprions: CategoryOption[] = options.filter(({isRequired}) => isRequired);
-		for (let i: number = 0; i < requiredOprions.length; ++i) {
-			const option: CategoryOption = requiredOprions[i];
-			if (option.isMaterial) {
-				let hasSuboptions: boolean = false;
-				const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
-				for (let j: number = 0; j < materialItems.length; ++j) {
-					const materialItem: CategoryMaterialItem | undefined = materialItems[j];
-					hasSuboptions = !!(materialItem && materialItem.suboptions.length > 0);
-				}
-				if (hasSuboptions && !selectedOptionRecords[option.id]) {
-					return false;
-				}
-			} else {
-				if ((option as CategoryOption<false>).suboptions.length > 0 && !selectedOptionRecords[option.id]) {
-					return false;
-				}
-			}
-		}
-		return true;
-	}, [formValues, hasGusset, options, selectedOptionRecords]);
-
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
 		dispatch(fetchAllProductSubcategories());
-		dispatch(fetchAllPrintingTypes());
+		// dispatch(fetchAllPrintingTypes());
 	}, [dispatch]);
 
 	useEffect(() => {
 		if (productSubcategories.length > 0) {
 			if (selectedProductSubcategoryId) {
+				dispatch(fetchPrintingTypesByProductSubcategoryId(selectedProductSubcategoryId));
 				setHasGusset(
 					productSubcategories.find(
 						(productSubcategory: ProductSubcategory | undefined) =>
@@ -227,6 +189,7 @@ export default function Home() {
 					)?.hasGusset || false
 				);
 			} else {
+				dispatch(fetchPrintingTypesByProductSubcategoryId(productSubcategories[0].id));
 				setSelectedProductSubcategoryId(productSubcategories[0].id);
 			}
 		}
@@ -343,8 +306,50 @@ export default function Home() {
 			return selectedOptions.filter((option: CategoryOption<boolean> | undefined) => !!option);
 		}, [selectedOptionRecords, options]);
 
+	const isResultValidate = useCallback((formValues?: FormValues): boolean => {
+		// To check size area
+		if (!(formValues?.width && formValues?.height && (!hasGusset || formValues?.gusset))) {
+			return false;
+		}
+
+		// To check numbers area
+		if (!(
+			formValues?.cases?.length &&
+			formValues?.cases
+				.map<boolean>(({numOfStyles, quantityPerStyle}) => !!(numOfStyles && quantityPerStyle))
+				.reduce((a: boolean, b: boolean) => a && b)
+		)) {
+			return false;
+		}
+
+		// To check options area
+		const requiredOprions: CategoryOption[] = options.filter(({isRequired}) => isRequired);
+		for (let i: number = 0; i < requiredOprions.length; ++i) {
+			const option: CategoryOption = requiredOprions[i];
+			if (option.isMaterial) {
+				let hasSuboptions: boolean = false;
+				const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+				for (let j: number = 0; j < materialItems.length; ++j) {
+					const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+					hasSuboptions = !!(materialItem && materialItem.suboptions.length > 0);
+				}
+				if (hasSuboptions && !selectedOptionRecords[option.id]) {
+					return false;
+				}
+			} else {
+				if ((option as CategoryOption<false>).suboptions.length > 0 && !selectedOptionRecords[option.id]) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}, [hasGusset, options, selectedOptionRecords]);
+
 	const onSubmit = useCallback(
 		(values: FormValues) => {
+			if (!isResultValidate(values)) {
+				return;
+			}
 			isSuggestedSKUs([]);
 			setFormValues(undefined);
 			console.log(values);
@@ -369,6 +374,8 @@ export default function Home() {
 				if (selectedPrintingType.name.toLowerCase() === "digital printing") {
 					dispatch(
 						calculateTotalPriceByDigitalPrinting({
+							categoryProductSubcategoryId: selectedProductSubcategoryId,
+        			categoryPrintingTypeId: selectedPrintingTypeId,
 							width: values.width,
 							height: values.height,
 							gusset: hasGusset ? values.gusset : undefined,
@@ -379,7 +386,7 @@ export default function Home() {
 				} else if (
 					selectedPrintingType.name.toLowerCase() === "offset printing"
 				) {
-					const { numOfMatchedModulus } =
+					const { numOfMatchedModulus, matchedPerimeter } =
 						CalculationUtil.calculateNumOfMatchedModulus(
 							values.width,
 							values.height,
@@ -395,11 +402,14 @@ export default function Home() {
 					isSuggestedSKUs(suggests);
 					dispatch(
 						calculateTotalPriceByOffsetPrinting({
+							categoryProductSubcategoryId: selectedProductSubcategoryId,
+        			categoryPrintingTypeId: selectedPrintingTypeId,
 							width: values.width,
 							height: values.height,
 							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
 							numOfMatchedModulus: numOfMatchedModulus,
+							matchedPerimeter: matchedPerimeter,
 							options: formattedSelectedOptions
 						})
 					);
@@ -408,22 +418,24 @@ export default function Home() {
 				) {
 					dispatch(
 						calculateTotalPriceByGravurePrinting({
+							categoryProductSubcategoryId: selectedProductSubcategoryId,
+        			categoryPrintingTypeId: selectedPrintingTypeId,
 							width: values.width,
 							height: values.height,
 							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
-							options: formattedSelectedOptions,
-							selectedProductSubcategoryId: selectedProductSubcategoryId
+							options: formattedSelectedOptions
 						})
 					);
 				}
 				dispatch(
 					calculateTotalWeight({
+						categoryProductSubcategoryId: selectedProductSubcategoryId,
+						categoryPrintingTypeId: selectedPrintingTypeId,
 						width: values.width,
 						height: values.height,
 						cases: values.cases,
-						options: formattedSelectedOptions,
-						selectedProductSubcategoryId: selectedProductSubcategoryId
+						options: formattedSelectedOptions
 					})
 				);
 			}
@@ -435,7 +447,8 @@ export default function Home() {
 			printingTypes,
 			selectedPrintingTypeId,
       selectedOptionRecords,
-			filterAndFormatSelectedOptionRecords
+			filterAndFormatSelectedOptionRecords,
+			isResultValidate
 		]
 	);
 
@@ -445,9 +458,9 @@ export default function Home() {
 
 	const onAddNewBaseCase = useCallback(() => {
 		appendCase({
-			numOfStyles: 1,
-			quantityPerStyle: 100,
-			totalQuantity: 100
+			numOfStyles: NaN,
+			quantityPerStyle: NaN,
+			totalQuantity: 0
 		});
 		handleSubmit(onSubmit)();
 	}, [appendCase, onSubmit]);
@@ -498,15 +511,6 @@ export default function Home() {
 			};
 		},
 		[selectedOptionRecords, onSubmit]
-	);
-
-	useEffect(
-		useDebouncedCallback(() => {
-			if (!isMobile) {
-				handleSubmit(onSubmit)();
-			}
-		}, DEBOUNCED_WAIT_TIME),
-		[onSubmit, isMobile]
 	);
 
 	const getSelectedValueOfMaterialItem = useCallback(
@@ -1576,7 +1580,7 @@ export default function Home() {
 					</VStack>
 				)}
 				{
-					(formValues?.cases?.length && isResultVisible)
+					(formValues?.cases?.length && isResultValidate(formValues))
 					?
 					(
 						<VStack
