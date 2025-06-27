@@ -636,7 +636,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       }
       let bagMakingCost: number = 0;
       const selectedZipperSuboption: CategorySuboption | undefined = CalculationUtil.getSelectedZipperSuboption(options);
-      const isSelectedsquareBottomBag: boolean = selectedProductSubcategory && selectedProductSubcategory.name.toLocaleLowerCase() === "square bottom bag";
+      const isSelectedsquareBottomBag: boolean = selectedProductSubcategory && selectedProductSubcategory.name.toLocaleLowerCase() === "flat bottoom bag";
       if (isSelectedsquareBottomBag) {
         if (!selectedZipperSuboption || selectedZipperSuboption.name.toLocaleLowerCase() === "no zipper") {
           bagMakingCost = 0.5 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
@@ -757,7 +757,7 @@ export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalcul
           case "fin seal bag":
           case "fin seal gusset bag":
           case "4 side seal bag":
-          case "square bottom bag":
+          case "flat bottoom bag":
           case "bag in box":
           case "film":
             totalWeights.push(
