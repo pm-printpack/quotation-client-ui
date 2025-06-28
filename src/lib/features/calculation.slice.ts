@@ -12,91 +12,91 @@ interface DigitalPrintingQuotationHistory {
   /**
    * 印刷宽度（mm）
    */
-  printingWidth: number;
+  printingWidth: string;
 
   /**
    * 横向印刷数
    */
-  horizontalLayoutCount: number;
+  horizontalLayoutCount: string;
 
   /**
    * 每印袋数
    */
-  numOfBagsPerImpression: number;
+  numOfBagsPerPrinting: string;
 
   /**
    * 印刷长度（m）
    */
-  printingLength: number;
+  printingLength: string;
 
   /**
    * 印数
    */
-  printingQuantity: number;
+  printingQuantity: string;
 }
 
 interface OffsetPrintingQuotationHistory {
   /**
    * 匹配模数
    */
-  numOfMatchedModulus: number;
+  numOfMatchedModulus: string;
 
   /**
    * 匹配周长
    */
-  matchedPerimeter: number;
+  matchedPerimeter: string;
 
   /**
    * 倍数
    */
-  multiple: number;
+  multiple: string;
 
   /**
    * 印刷用SKU数
    */
-  numOfSKUs4Printing: number;
+  numOfSKUs4Printing: string;
 
   /**
    * 材料宽度（mm）
    */
-  materialWidth: number;
+  materialWidth: string;
 
   /**
    * 印刷宽度（mm）
    */
-  printingWidth: number;
+  printingWidth: string;
 
   /**
    * 印刷长度（m）
    */
-  printingLength: number;
+  printingLength: string;
 }
 
 interface GravurePrintingQuotationHistory {
   /**
    * 材料宽度（mm）
    */
-  materialWidth: number;
+  materialWidth: string;
 
   /**
    * 版长（mm）
    */
-  plateLength: number;
+  plateLength: string;
 
   /**
    * 单袋印刷长/mm
    */
-  printingLengthPerPackage: number;
+  printingLengthPerPackage: string;
 
   /**
    * 版周/mm
    */
-  platePerimeter: number;
+  platePerimeter: string;
 
   /**
    * 版费（元）
    */
-  plateFee: number;
+  plateFee: string;
 }
 
 interface NewQuotationHistory {
@@ -104,24 +104,24 @@ interface NewQuotationHistory {
   categoryProductSubcategoryId: number;
   categoryPrintingTypeId: number;
 
-  width: number;
-  height: number;
-  gusset?: number;
+  width: string;
+  height: string;
+  gusset?: string;
 
   /**
    * number of SKU
    */
-  numOfStyles: number;
+  numOfStyles: string;
 
   /**
    * quantity of per SKU
    */
-  quantityPerStyle: number;
+  quantityPerStyle: string;
 
   /**
    * total quantity of SKU
    */
-  totalQuantity: number;
+  totalQuantity: string;
 
   categorySuboptions: CategorySuboption[];
   
@@ -150,37 +150,37 @@ interface NewQuotationHistory {
   /**
    * 材料面积（㎡）
    */
-  materialArea: number;
+  materialArea: string;
 
   /**
    * 印刷费（元）
    */
-  printingCost: number;
+  printingCost: string;
 
   /**
    * 材料费（元）
    */
-  materialCost: number;
+  materialCost: string;
 
   /**
    * 复合费（元）
    */
-  laminationCost: number;
+  laminationCost: string;
 
   /**
    * 制袋费（元）
    */
-  bagMakingCost: number;
+  bagMakingCost: string;
 
   /**
    * 刀模费（元）
    */
-  dieCuttingCost: number;
+  dieCuttingCost: string;
 
   /**
    * 包装费（元）
    */
-  packagingCost: number;
+  packagingCost: string;
 
   /**
    * 人工费（元）
@@ -269,24 +269,100 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
       if (!user) {
         return [];
       }
+      const categoryProductSubcategory: ProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
+      if (!categoryProductSubcategory) {
+        return [];
+      }
+      const isSelectedFlatBottomBag: boolean = categoryProductSubcategory.name.toLowerCase() === "flat bottoom bag";
       const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
       const newQuotationHistories: NewQuotationHistory[] = [];
       for (const baseCase of cases) {
         // Printing Cost
-        const printingWidth: number = (height + 10) * 2 + (gusset || 0);
+        let printingWidth: number = 0;
+        let printingWidthSide: number = 0;
+        if (isSelectedFlatBottomBag) {
+          printingWidth = (height + 20) * 2 + (gusset || 0);
+          printingWidthSide = ((gusset || 0) + 10) * 2;
+        } else if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+          printingWidth = (height + 10) * 2 + (gusset || 0) + 6 + 24;
+        } else {
+          printingWidth = (height + 10) * 2 + (gusset || 0);
+        }
         const horizontalLayoutCount: number = Math.floor(740 / printingWidth);
-        const numOfBagsPerImpression: number = Math.floor(1120 / (width + 5));
-        const printingQuantity: number = baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerImpression;
-        const printingCost: number = printingQuantity * 3.8;
+        let horizontalLayoutCountSide: number = 0;
+        if (isSelectedFlatBottomBag) {
+          horizontalLayoutCountSide = Math.floor(740 / printingWidthSide);
+        }
+        const numOfBagsPerPrinting: number = Math.floor(1120 / (width + 5));
+        let numOfBagsPerPrintingSide: number = 0;
+        if (isSelectedFlatBottomBag) {
+          numOfBagsPerPrintingSide = Math.floor(1120 / (height + 5));
+        }
+        let printingQuantity: number = 0;
+        let printingQuantitySide: number = 0;
+        if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+          printingQuantity = Math.ceil(baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerPrinting);
+        } else {
+          printingQuantity = baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerPrinting;
+        }
+        if (isSelectedFlatBottomBag) {
+          printingQuantitySide = baseCase.totalQuantity / horizontalLayoutCountSide / numOfBagsPerPrintingSide;
+        } 
+        let printingCost: number = 0;
+        let printingCostSide: number = 0;
+        if (isSelectedFlatBottomBag || ["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+          for (let i: number = 0; i < options.length; ++i) {
+            const option: CategoryOption = options[i];
+            if (!option.isMaterial) {
+              const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+              for (let j: number = 0; j < suboptions.length; ++j) {
+                const suboption: CategorySuboption = suboptions[j];
+                if (suboption.name.toLowerCase() === "uv") {
+                  printingCost = printingQuantity * 5 + 210;
+                  if (isSelectedFlatBottomBag) {
+                    printingCostSide = printingQuantitySide * 5 + 210;
+                  }
+                } else if (suboption.name.toLowerCase() === "gold stamping") {
+                  printingCost = printingQuantity * 5.8 + 230;
+                  if (isSelectedFlatBottomBag) {
+                    printingCostSide = printingQuantitySide * 5.8 + 230;
+                  }
+                }
+              }
+            }
+          }
+          if (printingCost === 0) {
+            printingCost = printingQuantity * 4.8;
+          }
+          if (isSelectedFlatBottomBag && printingCostSide === 0) {
+            printingCostSide = printingQuantitySide * 4.8;
+          }
+        } else {
+          printingCost = printingQuantity * 3.8;
+        }
         console.log("printingWidth: ", printingWidth);
         console.log("horizontalLayoutCount: ", horizontalLayoutCount);
-        console.log("numOfBagsPerImpression: ", numOfBagsPerImpression);
+        console.log("numOfBagsPerPrinting: ", numOfBagsPerPrinting);
         console.log("printingQuantity: ", printingQuantity);
         console.log("printingCost: ", printingCost);
 
         // Material Cost
-        const printingLength: number = baseCase.totalQuantity / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.5) + 50;
+        let printingLength: number = 0;
+        let printingLengthSide: number = 0;
+        if (isSelectedFlatBottomBag || ["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+          printingLength = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.05) + 300;
+        } else {
+          printingLength = baseCase.totalQuantity / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.5) + 50;
+        }
+        if (isSelectedFlatBottomBag) {
+          printingLengthSide = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (height + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.05) + 300;
+        }
+        
         const materialArea: number = printingLength * 760 / 1000;
+        let materialAreaSide: number = 0;
+        if (isSelectedFlatBottomBag) {
+          materialAreaSide = printingLengthSide * 760 / 1000;
+        }
         let totalUnitPricePerSquareMeter: number = 0;
         for (let i: number = 0; i < options.length; ++i) {
           const option: CategoryOption = options[i];
@@ -309,35 +385,74 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
           }
         }
         const materialCost: number = materialArea * totalUnitPricePerSquareMeter;
+        let materialCostSide: number = 0;
+        if (isSelectedFlatBottomBag) {
+          materialCostSide = materialAreaSide * totalUnitPricePerSquareMeter;
+        }
         console.log("printingLength: ", printingLength);
+        console.log("printingLengthSide: ", printingLengthSide);
         console.log("materialArea: ", materialArea);
+        console.log("materialAreaSide: ", materialAreaSide);
         console.log("materialCost: ", materialCost);
+        console.log("materialCostSide: ", materialCostSide);
 
         // Composite Processing Fee
         let numOfLaminationLayers: number = 0;
-        const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "layer material")[0];
+        const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "layer material")[0];
         if (laminationLayerOption) {
           numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialItem: CategoryMaterialItem | undefined) => !!materialItem).length;
         }
         const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
+        let laminationCostSide: number = 0;
+        if (isSelectedFlatBottomBag) {
+          laminationCostSide = (0.25 + 0.15 * numOfLaminationLayers) * materialAreaSide;
+        }
         console.log("laminationCost: ", laminationCost);
+        console.log("laminationCostSide: ", laminationCostSide);
 
         // Bag Making Cost
         let bagMakingCost: number = 0;
         const customShaped: boolean = CalculationUtil.isCustomShaped(options);
-        const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "zipper type")[0];
-        const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLocaleLowerCase();
-        if (customShaped) {
+        const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "zipper type")[0];
+        const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLowerCase();
+        const productionProcessTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "production process")[0];
+        const accessoryUnitPrice: number = (productionProcessTypeOption as CategoryOption<false>)?.suboptions.find(({name}) => name.toLowerCase() === "valve")?.unitPricePerSquareMeter || 0;
+        if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
           if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
-            bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+            if (customShaped) {
+              bagMakingCost = printingLength > 1000 ? 0.4 * printingLength + 0.113 * baseCase.totalQuantity : 400;
+            } else {
+              bagMakingCost = printingLength > 1000 ? 0.3 * printingLength : 300;
+            }
           } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
-            bagMakingCost = printingLength > 1000 ? 0.55 * printingLength : 550;
+            if (customShaped) {
+              bagMakingCost = printingLength > 1000 ? 0.55 * printingLength + 0.113 * baseCase.totalQuantity : 550;
+            } else {
+              bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+            }
+          }
+          if (width < 100) {
+            bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.totalQuantity) + accessoryUnitPrice * baseCase.totalQuantity;
+          }
+        } else if (["4 side seal bag", "flat bottoom bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+          if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
+            bagMakingCost = Math.max(0.8 * printingLength, 1200) + accessoryUnitPrice * baseCase.totalQuantity;
+          } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
+            bagMakingCost = Math.max(1 * printingLength, 1200) + accessoryUnitPrice * baseCase.totalQuantity;
           }
         } else {
           if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
-            bagMakingCost = printingLength > 1000 ? 0.3 * printingLength : 300;
+            if (customShaped) {
+              bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+            } else {
+              bagMakingCost = printingLength > 1000 ? 0.3 * printingLength : 300;
+            }
           } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
-            bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+            if (customShaped) {
+              bagMakingCost = printingLength > 1000 ? 0.55 * printingLength : 550;
+            } else {
+              bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+            }
           }
         }
         console.log("bagMakingCost: ", bagMakingCost);
@@ -350,40 +465,40 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         const packagingCost: number = Math.ceil(baseCase.totalQuantity / 2000) * 10;
         console.log("packagingCost: ", packagingCost);
 
-        const totalCostInCNY: number = (printingCost + materialCost + laminationCost + bagMakingCost + dieCuttingCost + packagingCost) * 1.08;
+        const totalCostInCNY: number = (printingCost + printingCostSide + materialCost + materialCostSide + laminationCost + laminationCostSide + bagMakingCost + dieCuttingCost + packagingCost) * 1.08;
         const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Digital printing", user.tier);
 
         newQuotationHistories.push({
           customerId: user.id,
           categoryProductSubcategoryId: categoryProductSubcategoryId,
           categoryPrintingTypeId: categoryPrintingTypeId,
-          width: width,
-          height: width,
-          gusset: gusset,
-          numOfStyles: baseCase.numOfStyles,
-          quantityPerStyle: baseCase.quantityPerStyle,
-          totalQuantity: baseCase.totalQuantity,
+          width: `${ width }`,
+          height: `${ height }`,
+          gusset: `${ gusset || "" }`,
+          numOfStyles: `${ baseCase.numOfStyles }`,
+          quantityPerStyle: `${ baseCase.quantityPerStyle }`,
+          totalQuantity: `${ baseCase.totalQuantity }`,
           categorySuboptions: [],
           materials: [],
           totalCostInCNY: totalCostInCNY,
           totalPriceInCNY: totalPriceInCNY,
           totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
           exchangeRateUSDToCNY: exchangeRateValue,
-          materialArea: materialArea,
-          printingCost: printingCost,
-          materialCost: materialCost,
-          laminationCost: laminationCost,
-          bagMakingCost: bagMakingCost,
-          dieCuttingCost: dieCuttingCost,
-          packagingCost: packagingCost,
+          materialArea: isSelectedFlatBottomBag ? `${ materialArea }/${ materialAreaSide }` : `${ materialArea }`,
+          printingCost: isSelectedFlatBottomBag ? `${ printingCost }/${ printingCostSide }` : `${ printingCost }`,
+          materialCost: isSelectedFlatBottomBag ? `${ materialCost }/${ materialCostSide }` : `${ materialCost }`,
+          laminationCost: isSelectedFlatBottomBag ? `${ laminationCost }/${ laminationCostSide }` : `${ laminationCost }`,
+          bagMakingCost: `${ bagMakingCost }`,
+          dieCuttingCost: `${ dieCuttingCost }`,
+          packagingCost: `${ packagingCost }`,
           laborCost: 0,
           fileProcessingFee: 0,
           digitalPrinting: {
-            printingWidth: printingWidth,
-            horizontalLayoutCount: horizontalLayoutCount,
-            numOfBagsPerImpression: numOfBagsPerImpression,
-            printingLength: printingLength,
-            printingQuantity: printingQuantity
+            printingWidth: isSelectedFlatBottomBag ? `${ printingWidth }/${printingWidthSide}` : `${ printingWidth }`,
+            horizontalLayoutCount: isSelectedFlatBottomBag ? `${ horizontalLayoutCount }/${ horizontalLayoutCountSide }` : `${ horizontalLayoutCount }`,
+            numOfBagsPerPrinting: isSelectedFlatBottomBag ? `${ numOfBagsPerPrinting }/${ numOfBagsPerPrintingSide }` : `${ numOfBagsPerPrinting }`,
+            printingLength: isSelectedFlatBottomBag ? `${ printingLength }/${ printingLengthSide }` : `${ printingLength }`,
+            printingQuantity: isSelectedFlatBottomBag ? `${ printingQuantity }/${ printingQuantitySide }` : `${ printingQuantity }`
           }
         });
       }
@@ -406,17 +521,62 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
     if (!user) {
       return [];
     }
+    const categoryProductSubcategory: ProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
+    if (!categoryProductSubcategory) {
+      return [];
+    }
     const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
     const newQuotationHistories: NewQuotationHistory[] = [];
     for (const baseCase of cases) {
       // Printing Cost
       const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / numOfMatchedModulus) * numOfMatchedModulus;
-      const printingLength: number = (width + 10) * baseCase.totalQuantity / baseCase.numOfStyles * numOfSKUs4Printing / 1000 + 250;
-      let printingCost: number = 0;
-      if (printingLength <= 1000) {
-        printingCost = 1300;
+      const multiple: number = Math.floor(baseCase.numOfStyles / numOfMatchedModulus);
+      let printingLength: number = 0;
+      if (baseCase.numOfStyles <= numOfMatchedModulus) {
+        if (baseCase.numOfStyles === 1 || numOfMatchedModulus % baseCase.numOfStyles === 0) {
+          printingLength = (width + 10) * baseCase.totalQuantity / 1000 + 250;
+        } else {
+          printingLength = (width + 10) * baseCase.totalQuantity / baseCase.numOfStyles * numOfMatchedModulus / 1000 + 250;
+        }
       } else {
-        printingCost = 1300 + (printingLength - 1000) * 0.2;
+        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        let remainderLength: number = 0;
+        if (baseCase.numOfStyles - multiple * numOfMatchedModulus === 1 || numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus) / 1000 + 250;
+        } else {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        }
+        printingLength = multipleLength * multiple + remainderLength;
+      }
+
+      let printingCost: number = 0;
+      if (baseCase.numOfStyles <= numOfMatchedModulus) {
+        if (printingLength <= 1000) {
+          printingCost = 1300;
+        } else {
+          printingCost = 1300 + (printingLength - 1000) * 0.2;
+        }
+      } else {
+        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        let remainderLength: number = 0;
+        if (baseCase.numOfStyles - multiple * numOfMatchedModulus === 1 || numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus) / 1000 + 250;
+        } else {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        }
+        let multipleLengthSinglePrintingCost: number = 0;
+        if (multipleLength <= 1000) {
+          multipleLengthSinglePrintingCost = 1300;
+        } else {
+          multipleLengthSinglePrintingCost = 1300 + (multipleLength - 1000) * 0.2;
+        }
+        let remainderLengthPrintingCost: number = 0;
+        if (remainderLength <= 1000) {
+          remainderLengthPrintingCost = 1300;
+        } else {
+          remainderLengthPrintingCost = 1300 + (remainderLength - 1000) * 0.2;
+        }
+        printingCost = multipleLengthSinglePrintingCost * multiple + remainderLengthPrintingCost;
       }
       console.log("printingLength: ", printingLength);
       console.log("printingCost: ", printingCost);
@@ -475,20 +635,72 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
 
       // Bag Making Cost
       let bagMakingCost: number = 0;
-      const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "zipper type")[0];
-      const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLocaleLowerCase();
-      if (customShaped) {
+      const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "zipper type")[0];
+      const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLowerCase();
+      let edgeWidth: number = 35;
+      if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+        edgeWidth = 100;
+      }
+      if (baseCase.numOfStyles <= numOfMatchedModulus) {
         if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
-          bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+          if (customShaped) {
+            bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+          } else {
+            bagMakingCost = printingLength > 1000 ? 0.3 * printingLength : 300;
+          }
         } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
-          bagMakingCost = printingLength > 1000 ? 0.55 * printingLength : 550;
+          if (customShaped) {
+            bagMakingCost = printingLength > 1000 ? 0.55 * printingLength : 550;
+          } else {
+            bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+          }
+        }
+        if (width < edgeWidth) {
+          bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.totalQuantity);
         }
       } else {
-        if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
-          bagMakingCost = printingLength > 1000 ? 0.3 * printingLength : 300;
-        } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
-          bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
+        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        let remainderLength: number = 0;
+        if (baseCase.numOfStyles - multiple * numOfMatchedModulus === 1 || numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus) / 1000 + 250;
+        } else {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
         }
+        let multipleLengthSinglePrintingCost: number = 0;
+        if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
+          if (customShaped) {
+            multipleLengthSinglePrintingCost = multipleLength > 1000 ? 0.45 * multipleLength : 450;
+          } else {
+            multipleLengthSinglePrintingCost = multipleLength > 1000 ? 0.3 * multipleLength : 300;
+          }
+        } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
+          if (customShaped) {
+            multipleLengthSinglePrintingCost = multipleLength > 1000 ? 0.55 * multipleLength : 550;
+          } else {
+            multipleLengthSinglePrintingCost = multipleLength > 1000 ? 0.45 * multipleLength : 450;
+          }
+        }
+        if (width < edgeWidth) {
+          multipleLengthSinglePrintingCost = Math.max(multipleLengthSinglePrintingCost, 0.02 * baseCase.totalQuantity);
+        }
+        let remainderLengthPrintingCost: number = 0;
+        if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
+          if (customShaped) {
+            remainderLengthPrintingCost = remainderLength > 1000 ? 0.45 * remainderLength : 450;
+          } else {
+            remainderLengthPrintingCost = remainderLength > 1000 ? 0.3 * remainderLength : 300;
+          }
+        } else if (["cr zipper", "easy-tear zipper", "degradable zipper", "bone zipper", "powder zipper", "slider zipper", "velcro zipper"].includes(zipperTypeName)) {
+          if (customShaped) {
+            remainderLengthPrintingCost = remainderLength > 1000 ? 0.55 * remainderLength : 550;
+          } else {
+            remainderLengthPrintingCost = remainderLength > 1000 ? 0.45 * remainderLength : 450;
+          }
+        }
+        if (width < edgeWidth) {
+          remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.totalQuantity);
+        }
+        bagMakingCost = multipleLengthSinglePrintingCost * multiple+ remainderLengthPrintingCost;
       }
       console.log("bagMakingCost: ", bagMakingCost);
 
@@ -515,35 +727,35 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         customerId: user.id,
         categoryProductSubcategoryId: categoryProductSubcategoryId,
         categoryPrintingTypeId: categoryPrintingTypeId,
-        width: width,
-        height: width,
-        gusset: gusset,
-        numOfStyles: baseCase.numOfStyles,
-        quantityPerStyle: baseCase.quantityPerStyle,
-        totalQuantity: baseCase.totalQuantity,
+        width: `${ width }`,
+        height: `${ height }`,
+        gusset: `${ gusset }`,
+        numOfStyles: `${ baseCase.numOfStyles }`,
+        quantityPerStyle: `${ baseCase.quantityPerStyle }`,
+        totalQuantity: `${ baseCase.totalQuantity }`,
         categorySuboptions: [],
         materials: [],
         totalCostInCNY: totalCostInCNY,
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
         exchangeRateUSDToCNY: exchangeRateValue,
-        materialArea: materialArea,
-        printingCost: printingCost,
-        materialCost: materialCost,
-        laminationCost: 0,
-        bagMakingCost: bagMakingCost,
-        dieCuttingCost: dieCuttingCost,
-        packagingCost: packagingCost,
+        materialArea: `${ materialArea }`,
+        printingCost: `${ printingCost }`,
+        materialCost: `${ materialCost }`,
+        laminationCost: "",
+        bagMakingCost: `${ bagMakingCost }`,
+        dieCuttingCost: `${ dieCuttingCost }`,
+        packagingCost: `${ packagingCost }`,
         laborCost: laborCost,
         fileProcessingFee: fileProcessingFee,
         offsetPrinting: {
-          numOfMatchedModulus: numOfMatchedModulus,
-          matchedPerimeter: matchedPerimeter,
-          multiple: Math.floor(baseCase.numOfStyles / numOfMatchedModulus),
-          numOfSKUs4Printing: numOfSKUs4Printing,
-          printingWidth: printingWidth,
-          materialWidth: materialWidth,
-          printingLength: printingLength
+          numOfMatchedModulus: `${ numOfMatchedModulus }`,
+          matchedPerimeter: `${ matchedPerimeter }`,
+          multiple: `${ multiple }`,
+          numOfSKUs4Printing: `${ numOfSKUs4Printing }`,
+          printingWidth: `${ printingWidth }`,
+          materialWidth: `${ materialWidth }`,
+          printingLength: `${ printingLength }`
         }
       });
     }
@@ -565,14 +777,41 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
     if (!user) {
       return [];
     }
+    const categoryProductSubcategory: ProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
+    if (!categoryProductSubcategory) {
+      return [];
+    }
+    const isSelectedFlatBottomBag: boolean = categoryProductSubcategory.name.toLowerCase() === "flat bottoom bag";
     const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
     const newQuotationHistories: NewQuotationHistory[] = [];
     for (const baseCase of cases) {
       // Material Cost
-      const printingLengthPerPackage: number = (width + 2.5) * 2;
+      let printingLengthPerPackage: number = 0;
+      let printingLengthPerPackageSide: number = 0;
+      if (categoryProductSubcategory.name.toLowerCase() === "4 side seal bag") {
+        printingLengthPerPackage = (height + 2.5) * 2;
+      } else {
+        printingLengthPerPackage = (width + 2.5) * 2;
+      }
+      if (isSelectedFlatBottomBag) {
+        printingLengthPerPackageSide = (height + 2.5) * 2;
+      }
       const customShaped: boolean = CalculationUtil.isCustomShaped(options);
-      const materialWidth: number = customShaped ? (height + 20) * 2 + (gusset || 0) : (height + 10) * 2 + (gusset || 0);
-      let materialArea: number = (printingLengthPerPackage * materialWidth * baseCase.totalQuantity) / 1000000;
+      let materialWidth: number = 0;
+      let materialWidthSide: number = 0;
+      if (categoryProductSubcategory.name.toLowerCase() === "4 side seal bag") {
+        materialWidth = (width + (gusset || 0) + 20) * 2;
+      } else {
+        materialWidth = customShaped ? (height + 20) * 2 + (gusset || 0) : (height + 10) * 2 + (gusset || 0);
+      }
+      if (isSelectedFlatBottomBag) {
+        materialWidthSide = ((gusset || 0) + 10) * 2;
+      }
+      const materialArea: number = (printingLengthPerPackage * materialWidth * baseCase.totalQuantity) / 1000000;
+      let materialAreaSide: number = 0;
+      if (isSelectedFlatBottomBag) {
+        materialAreaSide = (printingLengthPerPackageSide * materialWidthSide * baseCase.totalQuantity) / 1000000;
+      }
       let totalMaterialUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
@@ -590,45 +829,61 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         }
       }
       const materialCost: number = materialArea * totalMaterialUnitPricePerSquareMeter;
+      let materialCostSide: number = 0;
+      if (isSelectedFlatBottomBag) {
+        materialCostSide = materialAreaSide * totalMaterialUnitPricePerSquareMeter;
+      }
       console.log("printingLengthPerPackage: ", printingLengthPerPackage);
+      console.log("printingLengthPerPackageSide: ", printingLengthPerPackageSide);
       console.log("materialWidth: ", materialWidth);
+      console.log("materialWidthSide: ", materialWidthSide);
       console.log("totalMaterialUnitPricePerSquareMeter: ", totalMaterialUnitPricePerSquareMeter);
       console.log("materialArea: ", materialArea);
+      console.log("materialAreaSide: ", materialAreaSide);
       console.log("materialCost: ", materialCost);
+      console.log("materialCostSide: ", materialCostSide);
 
       // Printing Cost
       let totalUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
-        if (!option.isMaterial && ["color", "production process"].includes(option.name.toLocaleLowerCase())) {
+        if (!option.isMaterial && ["color", "production process"].includes(option.name.toLowerCase())) {
           const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
           for (let j: number = 0; j < suboptions.length; ++j) {
             totalUnitPricePerSquareMeter += suboptions[j].unitPricePerSquareMeter;
           }
         }
       }
-      const printingCost: number = materialArea * totalUnitPricePerSquareMeter;
+      const printingCost: number = Math.max(materialArea * totalUnitPricePerSquareMeter, 500);
+      let printingCostSide: number = 0;
+      if (isSelectedFlatBottomBag) {
+        printingCostSide = Math.max(materialAreaSide * totalUnitPricePerSquareMeter, 500);
+      }
       console.log("printingCost: ", printingCost);
+      console.log("printingCostSide: ", printingCostSide);
 
       // Composite Processing Fee
       let numOfLaminationLayers: number = 0;
-      const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "layer material")[0];
+      const laminationLayerOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "layer material")[0];
       if (laminationLayerOption) {
         numOfLaminationLayers = (laminationLayerOption as CategoryOption<true>).suboptions.filter((materialItem: CategoryMaterialItem | undefined) => !!materialItem).length;
       }
       const laminationCost: number = (0.25 + 0.15 * numOfLaminationLayers) * materialArea;
+      let laminationCostSide: number = 0;
+      if (isSelectedFlatBottomBag) {
+        laminationCostSide = (0.25 + 0.15 * numOfLaminationLayers) * materialAreaSide;
+      }
       console.log("laminationCost: ", laminationCost);
+      console.log("laminationCostSide: ", laminationCostSide);
 
       // Bag Making Cost
-      const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
-      const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === categoryProductSubcategoryId)[0];
       let totalProductionProcessUnitPricePerSquareMeter: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
-        if (!option.isMaterial && option.name.toLocaleLowerCase() === "production process") {
+        if (!option.isMaterial && option.name.toLowerCase() === "production process") {
           for (let j: number = 0; j < option.suboptions.length; ++j) {
             const suboption: CategorySuboption = (option as CategoryOption<false>).suboptions[j];
-            if (["spout", "valve"].includes(suboption.name.toLocaleLowerCase())) {
+            if (["spout", "valve"].includes(suboption.name.toLowerCase())) {
               totalProductionProcessUnitPricePerSquareMeter += suboption.unitPricePerSquareMeter;
             }
           }
@@ -636,9 +891,8 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       }
       let bagMakingCost: number = 0;
       const selectedZipperSuboption: CategorySuboption | undefined = CalculationUtil.getSelectedZipperSuboption(options);
-      const isSelectedsquareBottomBag: boolean = selectedProductSubcategory && selectedProductSubcategory.name.toLocaleLowerCase() === "flat bottoom bag";
-      if (isSelectedsquareBottomBag) {
-        if (!selectedZipperSuboption || selectedZipperSuboption.name.toLocaleLowerCase() === "no zipper") {
+      if (isSelectedFlatBottomBag) {
+        if (!selectedZipperSuboption || selectedZipperSuboption.name.toLowerCase() === "no zipper") {
           bagMakingCost = 0.5 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
         } else {
           bagMakingCost = 0.6 * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
@@ -646,17 +900,43 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       } else {
         bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPricePerSquareMeter || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
       }
+      bagMakingCost = Math.max(bagMakingCost, 1600);
       console.log("bagMakingCost: ", bagMakingCost);
 
       // Plate Fee
       let numOfPlate: number = 0;
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
-        if (!option.isMaterial && option.name.toLocaleLowerCase() === "color") {
+        if (!option.isMaterial && option.name.toLowerCase() === "color") {
           numOfPlate = Number(((option as CategoryOption<false>).suboptions[0].name.match(/(\d+)\s*colors?/) || [])[1] || 0);
         }
       }
-      const plateFee: number = numOfPlate * 450;
+      let unitPlateCost: number = 0;
+      let bottomCompensation: number = 0;
+      if (height < 200) {
+        unitPlateCost = 450;
+      } else if (height >= 200 && height < 250) {
+        unitPlateCost = 500;
+        bottomCompensation = 800;
+      } else if (height >= 250 && height < 350) {
+        unitPlateCost = 600;
+        bottomCompensation = 800;
+      } else if (height >= 350 && height < 400) {
+        unitPlateCost = 800;
+        bottomCompensation = 800;
+      } else if (height >= 400 && height <= 500) {
+        unitPlateCost = 10000;
+        bottomCompensation = 800;
+      } else {
+        throw new Error("The bag height exceeds the limit, please contact the sales for quote.");
+      }
+      let plateFee: number = 0;
+      if (isSelectedFlatBottomBag) {
+        plateFee = numOfPlate * 2 * unitPlateCost + bottomCompensation + (customShaped ? 1500 : 0);
+      } else {
+        plateFee = numOfPlate * unitPlateCost + bottomCompensation + (customShaped ? 1500 : 0);
+      }
+      // const plateFee: number = numOfPlate * 450;
       console.log("plateFee: ", plateFee);
 
       // Packaging Cost
@@ -665,6 +945,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
 
       // Plate Length
       let plateLength: number = 0;
+      let plateLengthSide: number = 0;
       if (materialWidth <= 600) {
         plateLength = 650;
       } else if (materialWidth <= 700) {
@@ -676,43 +957,61 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       } else if (materialWidth <= 1050) {
         plateLength = 1100;
       } else {
-        throw new Error("The plate length met an error.");
+        throw new Error("Please contact sales for quote.");
+      }
+      if (isSelectedFlatBottomBag) {
+        if (materialWidthSide <= 600) {
+          plateLengthSide = 650;
+        } else if (materialWidthSide <= 700) {
+          plateLengthSide = 750;
+        } else if (materialWidthSide <= 800) {
+          plateLengthSide = 850;
+        } else if (materialWidthSide <= 900) {
+          plateLengthSide = 950;
+        } else if (materialWidthSide <= 1050) {
+          plateLengthSide = 1100;
+        } else {
+          throw new Error("Please contact sales for quote.");
+        }
       }
 
-      console.log("isSelectedsquareBottomBag: ", isSelectedsquareBottomBag);
-      const totalCostInCNY: number = (isSelectedsquareBottomBag ? 1.55 : 1.35) * materialCost + printingCost + laminationCost + bagMakingCost + plateFee + packagingCost;
+      const platePerimeter: number = Math.min(Math.ceil(400 / printingLengthPerPackage) * printingLengthPerPackage, 800);
+      const platePerimeterSide: number = Math.min(Math.ceil(400 / printingLengthPerPackageSide) * printingLengthPerPackageSide, 800);
+
+      console.log("isSelectedFlatBottomBag: ", isSelectedFlatBottomBag);
+      const totalCostInCNY: number = ((isSelectedFlatBottomBag ? 1.55 : 1.35) * materialCost + printingCost + printingCostSide + laminationCost + laminationCostSide + bagMakingCost + plateFee + packagingCost) * 1.08;
       const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Gravure printing", user?.tier);
       newQuotationHistories.push({
         customerId: user.id,
         categoryProductSubcategoryId: categoryProductSubcategoryId,
         categoryPrintingTypeId: categoryPrintingTypeId,
-        width: width,
-        height: width,
-        gusset: gusset,
-        numOfStyles: baseCase.numOfStyles,
-        quantityPerStyle: baseCase.quantityPerStyle,
-        totalQuantity: baseCase.totalQuantity,
+        width: `${ width }`,
+        height: `${ height }`,
+        gusset: `${ gusset }`,
+        numOfStyles: `${ baseCase.numOfStyles }`,
+        quantityPerStyle: `${ baseCase.quantityPerStyle }`,
+        totalQuantity: `${ baseCase.totalQuantity }`,
         categorySuboptions: [],
         materials: [],
         totalCostInCNY: totalCostInCNY,
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
         exchangeRateUSDToCNY: exchangeRateValue,
-        materialArea: materialArea,
-        printingCost: printingCost,
-        materialCost: materialCost,
-        laminationCost: laminationCost,
-        bagMakingCost: bagMakingCost,
-        dieCuttingCost: 0,
-        packagingCost: packagingCost,
+        materialArea: `${ materialArea }/${ materialAreaSide }`,
+        printingCost: `${ printingCost }/${ printingCostSide }`,
+        materialCost: `${ materialCost }/${ materialCostSide }`,
+        laminationCost: `${ laminationCost }/${ laminationCostSide }`,
+        bagMakingCost: `${ bagMakingCost }`,
+        dieCuttingCost: "",
+        packagingCost: `${ packagingCost }`,
         laborCost: 0,
         fileProcessingFee: 0,
         gravurePrinting: {
-          materialWidth: materialWidth,
-          plateLength: plateLength,
-          printingLengthPerPackage: printingLengthPerPackage,
-          platePerimeter: Math.min(Math.ceil(400 / printingLengthPerPackage) * printingLengthPerPackage, 800),
-          plateFee: plateFee
+          materialWidth: `${ materialWidth }/${ materialWidthSide }`,
+          plateLength: `${ plateLength }/${ plateLengthSide }`,
+          printingLengthPerPackage: `${ printingLengthPerPackage }/${ printingLengthPerPackageSide }`,
+          platePerimeter: `${ platePerimeter }/${ platePerimeterSide }`,
+          plateFee: `${ plateFee }`
         }
       });
     }

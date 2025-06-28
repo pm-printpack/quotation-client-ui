@@ -148,6 +148,7 @@ export default function Home() {
 		control,
 		handleSubmit,
 		formState: { errors },
+		setError,
 		getValues,
 		setValue
 	} = useForm<FormValues>({
@@ -308,6 +309,26 @@ export default function Home() {
 
 	const isResultValidate = useCallback((formValues?: FormValues): boolean => {
 		// To check size area
+		if (printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name?.toLowerCase() === "digital printing") {
+			let hasError: boolean = false;
+			if (formValues?.width && formValues?.width > 600) {
+				setError("width", {
+					type: "manual",
+					message: "Width cannot be greater than 600"
+				}, { shouldFocus: !hasError });
+				hasError = true;
+			}
+			if (formValues?.height && formValues?.height > 370) {
+				setError("height", {
+					type: "manual",
+					message: "Height cannot be greater than 370"
+				}, { shouldFocus: !hasError });
+				hasError = true;
+			}
+			if (hasError) {
+				return false;
+			}
+		}
 		if (!(formValues?.width && formValues?.height && (!hasGusset || formValues?.gusset))) {
 			return false;
 		}
