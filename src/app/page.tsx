@@ -366,7 +366,7 @@ export default function Home() {
 		return true;
 	}, [hasGusset, options, selectedOptionRecords]);
 
-	const onSubmit = useCallback(
+	const onSubmit = useCallback(useDebouncedCallback(
 		(values: FormValues) => {
 			if (!isResultValidate(values)) {
 				return;
@@ -461,7 +461,7 @@ export default function Home() {
 				);
 			}
 			setFormValues(values);
-		},
+		}, DEBOUNCED_WAIT_TIME),
 		[
 			hasGusset,
 			selectedProductSubcategoryId,

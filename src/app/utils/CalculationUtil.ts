@@ -1,4 +1,4 @@
-import { CategoryMaterialItem, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
+import { CategoryMaterialItem, CategoryMaterialSuboption, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
 
 const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
   [0,   507.500,  532.900,  558.300,  609.100,  634.500,  685.300],
@@ -132,41 +132,33 @@ export default {
     }
 
     return result.join("\n");
-  }
+  },
 
-  // getTextQuotationDetail: (
-  //   printingTypes: PrintingType[],
-  //   selectedPrintingTypeId: number,
-  //   productSubcategories: ProductSubcategory[],
-  //   selectedProductSubcategoryId: number,
-  //   formValues: {width?: number, height?: number, gusset?: number},
-  //   hasGusset: boolean,
-  //   selectedOptions: CategoryOption<boolean>[]
-  // ): string => {
-  //   const productName: string = productSubcategories.find(({ id }) => id === selectedProductSubcategoryId)?.name || "";
-  //   const printingType: string = printingTypes.find(({ id }) => id === selectedPrintingTypeId)?.name || "";
-  //   const result: string[] = [
-  //     "Quotation Details for",
-  //     `${printingType} of ${productName}s`,
-  //     "",
-  //     `Product Name: ${productName}`,
-  //     `Printing Type: ${printingType}`,
-  //     `Size: ${formValues?.width || 0}mm x ${formValues?.height || 0}mm${hasGusset ? ` x ${formValues?.gusset || 0}mm` : ""}`
-  //   ];
-  //   selectedOptions.forEach((option: CategoryOption) => {
-  //     if (option.isMaterial) {
-  //       (option as CategoryOption<true>).suboptions.forEach((materialItem: CategoryMaterialItem | undefined, index: number) => {
-  //         if (materialItem) {
-  //           materialItem.suboptions.forEach((suboption: CategorySuboption) => {
-  //             const key: string = `${option.name}${option.suboptions.length > 1 ? ` ${index + 1}` : ""}`
-  //             result.push(`${key}: ${suboption.name}`);
-  //           })
-  //         }
-  //       });
-  //     } else {
-  //       result.push(`${option.name}: ${(option as CategoryOption<false>).suboptions[0].name}`);
-  //     }
-  //   })
-  //   return result.join("\n");
-  // }
+  splitCatgeoryOptions: (options: CategoryOption[]): {categorySuboptions: CategorySuboption[]; materials: CategoryMaterialSuboption[];} => {
+    const categorySuboptions: CategorySuboption[] = [];
+    const materials: CategoryMaterialSuboption[] = [];
+    for (const option of options) {
+      if (option.isMaterial) {
+        const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+        for (const materialItem of materialItems) {
+          if (materialItem) {
+            const suboptions: CategoryMaterialSuboption[] = materialItem.suboptions;
+            for (const suboption of suboptions) {
+              if (suboption) {
+                materials.push(suboption);
+              }
+            }
+          }
+        }
+      } else {
+        const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+        for (const suboption of suboptions) {
+          if (suboption) {
+            categorySuboptions.push(suboption);
+          }
+        }
+      }
+    }
+    return {categorySuboptions, materials};
+  }
 };

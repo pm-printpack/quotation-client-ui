@@ -468,6 +468,8 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         const totalCostInCNY: number = (printingCost + printingCostSide + materialCost + materialCostSide + laminationCost + laminationCostSide + bagMakingCost + dieCuttingCost + packagingCost) * 1.08;
         const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Digital printing", user.tier);
 
+        const {categorySuboptions, materials} = CalculationUtil.splitCatgeoryOptions(options);
+
         newQuotationHistories.push({
           customerId: user.id,
           categoryProductSubcategoryId: categoryProductSubcategoryId,
@@ -478,8 +480,8 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
           numOfStyles: `${ baseCase.numOfStyles }`,
           quantityPerStyle: `${ baseCase.quantityPerStyle }`,
           totalQuantity: `${ baseCase.totalQuantity }`,
-          categorySuboptions: [],
-          materials: [],
+          categorySuboptions: categorySuboptions,
+          materials: materials,
           totalCostInCNY: totalCostInCNY,
           totalPriceInCNY: totalPriceInCNY,
           totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
@@ -503,9 +505,9 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         });
       }
 
-      // if (user) {
-      //   await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
-      // }
+      if (user) {
+        await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
+      }
       return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
   }
 );
@@ -723,6 +725,8 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
       const totalCostInCNY: number = (printingCost + materialCost + bagMakingCost + dieCuttingCost + laborCost + packagingCost + fileProcessingFee) * 1.08;
       const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Offset printing", user.tier);
 
+      const {categorySuboptions, materials} = CalculationUtil.splitCatgeoryOptions(options);
+
       newQuotationHistories.push({
         customerId: user.id,
         categoryProductSubcategoryId: categoryProductSubcategoryId,
@@ -733,8 +737,8 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         numOfStyles: `${ baseCase.numOfStyles }`,
         quantityPerStyle: `${ baseCase.quantityPerStyle }`,
         totalQuantity: `${ baseCase.totalQuantity }`,
-        categorySuboptions: [],
-        materials: [],
+        categorySuboptions: categorySuboptions,
+        materials: materials,
         totalCostInCNY: totalCostInCNY,
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
@@ -759,9 +763,9 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         }
       });
     }
-    // if (user) {
-    //   await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
-    // }
+    if (user) {
+      await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
+    }
     return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
   }
 );
@@ -981,6 +985,9 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       console.log("isSelectedFlatBottomBag: ", isSelectedFlatBottomBag);
       const totalCostInCNY: number = ((isSelectedFlatBottomBag ? 1.55 : 1.35) * materialCost + printingCost + printingCostSide + laminationCost + laminationCostSide + bagMakingCost + plateFee + packagingCost) * 1.08;
       const totalPriceInCNY: number = calculateProfitMargin(totalCostInCNY, "Gravure printing", user?.tier);
+
+      const {categorySuboptions, materials} = CalculationUtil.splitCatgeoryOptions(options);
+
       newQuotationHistories.push({
         customerId: user.id,
         categoryProductSubcategoryId: categoryProductSubcategoryId,
@@ -991,8 +998,8 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         numOfStyles: `${ baseCase.numOfStyles }`,
         quantityPerStyle: `${ baseCase.quantityPerStyle }`,
         totalQuantity: `${ baseCase.totalQuantity }`,
-        categorySuboptions: [],
-        materials: [],
+        categorySuboptions: categorySuboptions,
+        materials: materials,
         totalCostInCNY: totalCostInCNY,
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
@@ -1015,9 +1022,9 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         }
       });
     }
-    // if (user) {
-    //   await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
-    // }
+    if (user) {
+      await Promise.all(newQuotationHistories.map((newQuotationHistory) => post("/quotation-histories", newQuotationHistory)))
+    }
     return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
   }
 );
