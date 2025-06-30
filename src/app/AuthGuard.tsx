@@ -28,6 +28,9 @@ export default function AuthGuard({ children }: PropsWithChildren) {
   const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      return;
+    }
     const token: string | null = localStorage.getItem("jwtToken");
     const isLoginPage = pathname === "/login";
     let isValid: boolean = false;

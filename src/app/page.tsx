@@ -176,7 +176,6 @@ export default function Home() {
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
 		dispatch(fetchAllProductSubcategories());
-		// dispatch(fetchAllPrintingTypes());
 	}, [dispatch]);
 
 	useEffect(() => {
@@ -190,7 +189,6 @@ export default function Home() {
 					)?.hasGusset || false
 				);
 			} else {
-				dispatch(fetchPrintingTypesByProductSubcategoryId(productSubcategories[0].id));
 				setSelectedProductSubcategoryId(productSubcategories[0].id);
 			}
 		}
