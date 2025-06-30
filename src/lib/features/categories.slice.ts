@@ -29,6 +29,18 @@ export interface CategoryOption<T extends boolean = boolean> extends Category {
   suboptions: T extends true ? (CategoryMaterialItem | undefined)[] : CategorySuboption[];
 }
 
+export interface CategoryAllMapping {
+  categoryProductSubcategoryId: number;
+  categoryProductSubcategory: ProductSubcategory;
+  categoryPrintingTypeId: number;
+  categoryPrintingType: PrintingType;
+  categoryOptionId: number;
+  categoryOption: CategoryOption;
+  categorySuboptionId: number;
+  categorySuboption: CategorySuboption;
+  // quotationHistories: QuotationHistory[];
+}
+
 interface CategoryOptionFromService<T extends boolean = boolean> extends Category {
   isMaterial: T;
   isRequired: boolean;

@@ -1,4 +1,4 @@
-import { CategoryMaterialItem, CategoryMaterialSuboption, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
+import { CategoryAllMapping, CategoryMaterialItem, CategoryMaterialSuboption, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
 
 const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
   [0,   507.500,  532.900,  558.300,  609.100,  634.500,  685.300],
@@ -134,7 +134,8 @@ export default {
     return result.join("\n");
   },
 
-  splitCatgeoryOptions: (options: CategoryOption[]): {categorySuboptions: CategorySuboption[]; materials: CategoryMaterialSuboption[];} => {
+  splitCatgeoryOptions: (categoryProductSubcategory: ProductSubcategory, categoryPrintingType: PrintingType, options: CategoryOption[]): {categoryAllMappings: CategoryAllMapping[], categorySuboptions: CategorySuboption[]; materials: CategoryMaterialSuboption[];} => {
+    const categoryAllMappings: CategoryAllMapping[] = [];
     const categorySuboptions: CategorySuboption[] = [];
     const materials: CategoryMaterialSuboption[] = [];
     for (const option of options) {
@@ -155,10 +156,20 @@ export default {
         for (const suboption of suboptions) {
           if (suboption) {
             categorySuboptions.push(suboption);
+            categoryAllMappings.push({
+              categoryProductSubcategoryId: categoryProductSubcategory.id,
+              categoryProductSubcategory: categoryProductSubcategory,
+              categoryPrintingTypeId: categoryPrintingType.id,
+              categoryPrintingType: categoryPrintingType,
+              categoryOptionId: option.id,
+              categoryOption: option,
+              categorySuboptionId: suboption.id,
+              categorySuboption: suboption
+            });
           }
         }
       }
     }
-    return {categorySuboptions, materials};
+    return {categoryAllMappings, categorySuboptions, materials};
   }
 };
