@@ -4,7 +4,6 @@ import CalculationUtil from "@/app/utils/CalculationUtil";
 import { RootState } from "../store";
 import { Customer, CustomerTier } from "./customers.slice";
 import { useRequest } from "@/hooks/useRequest";
-import { ExhangeRate } from "./environment.slice";
 
 const {post} = useRequest();
 
@@ -382,11 +381,11 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
                 }
               }
             }
-          } else {
-            const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-            for (let n: number = 0; n < suboptions.length; ++n) {
-              totalUnitPricePerSquareMeter += suboptions[n].unitPricePerSquareMeter || 0;
-            }
+          // } else {
+          //   const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+          //   for (let n: number = 0; n < suboptions.length; ++n) {
+          //     totalUnitPricePerSquareMeter += suboptions[n].unitPricePerSquareMeter || 0;
+          //   }
           }
         }
         const materialCost: number = materialArea * totalUnitPricePerSquareMeter;
@@ -1095,7 +1094,7 @@ export const calculationSlice = createSlice({
   reducers: {
   },
   extraReducers: (builder: ActionReducerMapBuilder<CalculationState>) => {
-    [calculateTotalPriceByDigitalPrinting, calculateTotalPriceByGravurePrinting].forEach((asyncThunk) => {
+    [calculateTotalPriceByDigitalPrinting, calculateTotalPriceByOffsetPrinting, calculateTotalPriceByGravurePrinting].forEach((asyncThunk) => {
       builder.addCase(asyncThunk.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
         state.totalPrices = action.payload;
       });

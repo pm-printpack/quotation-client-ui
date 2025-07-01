@@ -228,12 +228,15 @@ export default function Home() {
 
 	useEffect(() => {
 		if (selectedProductSubcategoryId && selectedPrintingTypeId) {
-			dispatch(
-				fetchCategoryOptions({
-					categoryProductSubcategoryId: selectedProductSubcategoryId,
-					categoryPrintingTypeId: selectedPrintingTypeId
-				})
-			).unwrap();
+			(async () => {
+				await dispatch(
+					fetchCategoryOptions({
+						categoryProductSubcategoryId: selectedProductSubcategoryId,
+						categoryPrintingTypeId: selectedPrintingTypeId
+					})
+				).unwrap();
+				handleSubmit(onSubmit)();
+			})();
 		}
 	}, [selectedProductSubcategoryId, selectedPrintingTypeId]);
 
@@ -1009,7 +1012,7 @@ export default function Home() {
 				</DataListRoot>
 			);
 		},
-		[formValues, selectedOptionRecords, totalWeights]
+		[formValues, selectedOptionRecords, totalWeights, totalPrices, exchangeRate]
 	);
 
 	return (
