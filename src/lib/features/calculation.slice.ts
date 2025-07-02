@@ -994,7 +994,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       }
 
       const platePerimeter: number = Math.min(Math.ceil(400 / printingLengthPerPackage) * printingLengthPerPackage, 800);
-      const platePerimeterSide: number = Math.min(Math.ceil(400 / printingLengthPerPackageSide) * printingLengthPerPackageSide, 800);
+      const platePerimeterSide: number = printingLengthPerPackageSide === 0 ? 0 : Math.min(Math.ceil(400 / printingLengthPerPackageSide) * printingLengthPerPackageSide, 800);
 
       console.log("isSelectedFlatBottomBag: ", isSelectedFlatBottomBag);
       const totalCostInCNY: number = ((isSelectedFlatBottomBag ? 1.55 : 1.35) * materialCost + printingCost + printingCostSide + laminationCost + laminationCostSide + bagMakingCost + plateFee + packagingCost) * 1.08;
@@ -1018,20 +1018,20 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
         exchangeRateUSDToCNY: exchangeRateValue,
-        materialArea: `${ materialArea }/${ materialAreaSide }`,
-        printingCost: `${ printingCost }/${ printingCostSide }`,
-        materialCost: `${ materialCost }/${ materialCostSide }`,
-        laminationCost: `${ laminationCost }/${ laminationCostSide }`,
+        materialArea: !materialAreaSide ? `${ materialArea }` : `${ materialArea }/${ materialAreaSide }`,
+        printingCost: !printingCostSide ? `${ printingCost }` : `${ printingCost }/${ printingCostSide }`,
+        materialCost: !materialCostSide ? `${ materialCost }` : `${ materialCost }/${ materialCostSide }`,
+        laminationCost: !laminationCostSide ? `${ laminationCost }` : `${ laminationCost }/${ laminationCostSide }`,
         bagMakingCost: `${ bagMakingCost }`,
         dieCuttingCost: "",
         packagingCost: `${ packagingCost }`,
         laborCost: 0,
         fileProcessingFee: 0,
         gravurePrinting: {
-          materialWidth: `${ materialWidth }/${ materialWidthSide }`,
-          plateLength: `${ plateLength }/${ plateLengthSide }`,
-          printingLengthPerPackage: `${ printingLengthPerPackage }/${ printingLengthPerPackageSide }`,
-          platePerimeter: `${ platePerimeter }/${ platePerimeterSide }`,
+          materialWidth: !materialWidthSide ? `${ materialWidth }` : `${ materialWidth }/${ materialWidthSide }`,
+          plateLength: !plateLengthSide ? `${ plateLength }` : `${ plateLength }/${ plateLengthSide }`,
+          printingLengthPerPackage: printingLengthPerPackageSide === 0 ? `${ printingLengthPerPackage }` : `${ printingLengthPerPackage }/${ printingLengthPerPackageSide }`,
+          platePerimeter: !platePerimeterSide ? `${ platePerimeter }` : `${ platePerimeter }/${ platePerimeterSide }`,
           plateFee: `${ plateFee }`
         }
       });
