@@ -10,17 +10,17 @@ interface Category{
   createdAt: Date;
 };
 
-export interface ProductSubcategory extends Category {
+export interface CategoryProductSubcategory extends Category {
   hasGusset: boolean;
   isVisible: boolean;
 }
 
-export interface PrintingType extends Category {}
+export interface CategoryPrintingType extends Category {}
 
 export interface CategoryMaterialItem {
   id: number;
   isVisible: boolean;
-  suboptions: CategoryMaterialSuboption[];
+  suboptions: Material[];
 }
 
 export interface CategoryOption<T extends boolean = boolean> extends Category {
@@ -31,9 +31,9 @@ export interface CategoryOption<T extends boolean = boolean> extends Category {
 
 export interface CategoryAllMapping {
   categoryProductSubcategoryId: number;
-  categoryProductSubcategory: ProductSubcategory;
+  categoryProductSubcategory: CategoryProductSubcategory;
   categoryPrintingTypeId: number;
-  categoryPrintingType: PrintingType;
+  categoryPrintingType: CategoryPrintingType;
   categoryOptionId: number;
   categoryOption: CategoryOption;
   categorySuboptionId: number;
@@ -44,7 +44,7 @@ export interface CategoryAllMapping {
 interface CategoryOptionFromService<T extends boolean = boolean> extends Category {
   isMaterial: T;
   isRequired: boolean;
-  suboptions: T extends true ? CategoryMaterialSuboption[][] : CategorySuboption[];
+  suboptions: T extends true ? Material[][] : CategorySuboption[];
 }
 
 export interface CategorySuboption extends Category {
@@ -55,7 +55,7 @@ export interface CategorySuboption extends Category {
   unitPricePerSquareMeter: number;
 }
 
-export interface CategoryMaterialSuboption extends CategorySuboption {
+export interface Material extends CategorySuboption {
   density: number;
   thickness: number;
 
@@ -70,12 +70,25 @@ export interface CategoryMaterialSuboption extends CategorySuboption {
    * The unit is g/cm²
    */
   weightPerCm2: number;
+
+  displays: MaterialDisplay[];
+}
+
+export interface MaterialDisplay {
+  id: number;
+  categoryPrintingTypeId: number;
+  categoryPrintingType: CategoryPrintingType;
+  categoryOptionId: number;
+  materialId: number;
+  material: Material;
+  index: number;
+  isActive: boolean;
 }
 
 interface CategoriesState {
   loading: boolean;
-  productSubcategories: ProductSubcategory[];
-  printingTypes: PrintingType[];
+  productSubcategories: CategoryProductSubcategory[];
+  printingTypes: CategoryPrintingType[];
   options: CategoryOption[];
 }
 
@@ -86,10 +99,10 @@ const initialState: CategoriesState = {
   options: []
 };
 
-export const fetchAllProductSubcategories = createAsyncThunk<ProductSubcategory[], void>(
+export const fetchAllProductSubcategories = createAsyncThunk<CategoryProductSubcategory[], void>(
   "categories/fetchAllProductSubcategories",
-  async (): Promise<ProductSubcategory[]> => {
-    const {data, error} = await get<{}, ProductSubcategory[]>("/categories/product-subcategories");
+  async (): Promise<CategoryProductSubcategory[]> => {
+    const {data, error} = await get<{}, CategoryProductSubcategory[]>("/categories/product-subcategories");
     if (error) {
       throw error;
     }
@@ -97,10 +110,10 @@ export const fetchAllProductSubcategories = createAsyncThunk<ProductSubcategory[
   }
 );
 
-export const fetchPrintingTypesByProductSubcategoryId = createAsyncThunk<PrintingType[], number>(
+export const fetchPrintingTypesByProductSubcategoryId = createAsyncThunk<CategoryPrintingType[], number>(
   "categories/fetchAllPrintingTypes",
-  async (categoryProductSubcategoryId: number): Promise<PrintingType[]> => {
-    const {data, error} = await get<{}, PrintingType[]>(`/categories/printing-types/${categoryProductSubcategoryId}`);
+  async (categoryProductSubcategoryId: number): Promise<CategoryPrintingType[]> => {
+    const {data, error} = await get<{}, CategoryPrintingType[]>(`/categories/printing-types/${categoryProductSubcategoryId}`);
     if (error) {
       throw error;
     }
@@ -192,11 +205,11 @@ export const categoriesSlice = createSlice({
         state.loading = false;
       });
     });
-    builder.addCase(fetchAllProductSubcategories.fulfilled, (state: CategoriesState, action: PayloadAction<ProductSubcategory[]>) => {
+    builder.addCase(fetchAllProductSubcategories.fulfilled, (state: CategoriesState, action: PayloadAction<CategoryProductSubcategory[]>) => {
       state.productSubcategories = action.payload;
       state.loading = false;
     });
-    builder.addCase(fetchPrintingTypesByProductSubcategoryId.fulfilled, (state: CategoriesState, action: PayloadAction<PrintingType[]>) => {
+    builder.addCase(fetchPrintingTypesByProductSubcategoryId.fulfilled, (state: CategoriesState, action: PayloadAction<CategoryPrintingType[]>) => {
       state.printingTypes = action.payload;
       state.loading = false;
     });
@@ -205,7 +218,7 @@ export const categoriesSlice = createSlice({
         if (option.isMaterial) {
           return {
             ...option,
-            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: CategoryMaterialSuboption[] | null, index: number): CategoryMaterialItem => {
+            suboptions: (option as CategoryOptionFromService<true>).suboptions.map((suboptions: Material[] | null, index: number): CategoryMaterialItem => {
               if (!suboptions) {
                 return {
                   id: index,

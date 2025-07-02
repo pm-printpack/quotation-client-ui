@@ -3,13 +3,13 @@ import {
 	fetchAllProductSubcategories,
 	fetchCategoryOptions,
 	CategoryOption,
-	PrintingType,
-	ProductSubcategory,
+	CategoryPrintingType,
+	CategoryProductSubcategory,
 	CategorySuboption,
 	CategoryMaterialItem,
 	hideMaterialItem,
 	showMaterialItem1By1,
-	CategoryMaterialSuboption,
+	Material,
   showMaterialItemsBySelectedOptions,
 	fetchPrintingTypesByProductSubcategoryId
 } from "@/lib/features/categories.slice";
@@ -108,10 +108,10 @@ export default function Home() {
 		base: true,
 		sm: false
 	});
-	const productSubcategories: ProductSubcategory[] = useAppSelector(
+	const productSubcategories: CategoryProductSubcategory[] = useAppSelector(
 		(state: RootState) => state.categories.productSubcategories
 	);
-	const printingTypes: PrintingType[] = useAppSelector(
+	const printingTypes: CategoryPrintingType[] = useAppSelector(
 		(state: RootState) => state.categories.printingTypes
 	);
 	const options: CategoryOption[] = useAppSelector(
@@ -129,7 +129,7 @@ export default function Home() {
 	const [selectedProductSubcategoryId, setSelectedProductSubcategoryId] =
 		useState<number>(productSubcategories[0]?.id);
 	const [displayedPrintingTypes, setDisplayedPrintingTypes] = useState<
-		PrintingType[]
+		CategoryPrintingType[]
 	>([]);
 	const [hasGusset, setHasGusset] = useState<boolean>(false);
 	const [selectedPrintingTypeId, setSelectedPrintingTypeId] = useState<number>(
@@ -184,7 +184,7 @@ export default function Home() {
 				dispatch(fetchPrintingTypesByProductSubcategoryId(selectedProductSubcategoryId));
 				setHasGusset(
 					productSubcategories.find(
-						(productSubcategory: ProductSubcategory | undefined) =>
+						(productSubcategory: CategoryProductSubcategory | undefined) =>
 							productSubcategory?.id === selectedProductSubcategoryId
 					)?.hasGusset || false
 				);
@@ -207,7 +207,7 @@ export default function Home() {
 	}, [selectedPrintingTypeId, printingTypes]);
 
 	useEffect(() => {
-		const selectedProductSubcategory: ProductSubcategory | undefined =
+		const selectedProductSubcategory: CategoryProductSubcategory | undefined =
 			productSubcategories.find(
 				({ id }) => id === selectedProductSubcategoryId
 			);
@@ -267,15 +267,14 @@ export default function Home() {
 								materialItems[j];
 							if (materialItem) {
 								if (selectedMaterialItem) {
-									const selectedSuboptions: CategoryMaterialSuboption[] =
-										selectedMaterialItem.suboptions;
-									for (let n: number = 0; n < selectedSuboptions.length; ++n) {
+									const selectedMaterials: Material[] = selectedMaterialItem.suboptions;
+									for (let n: number = 0; n < selectedMaterials.length; ++n) {
 										if (
 											!materialItem.suboptions.some(
-												({ id }) => id === selectedSuboptions[n].id
+												({ id }) => id === selectedMaterials[n].id
 											)
 										) {
-											selectedSuboptions.splice(n, 1);
+											selectedMaterials.splice(n, 1);
 											--n;
 										}
 									}
@@ -379,9 +378,9 @@ export default function Home() {
 				if (!values.width || !values.height) {
 					return;
 				}
-				const selectedPrintingType: PrintingType | undefined =
+				const selectedPrintingType: CategoryPrintingType | undefined =
 					printingTypes.find(
-						(printingType: PrintingType) =>
+						(printingType: CategoryPrintingType) =>
 							printingType.id === selectedPrintingTypeId
 					);
 				if (!selectedPrintingType) {
@@ -590,17 +589,15 @@ export default function Home() {
 						};
 					}
 					if (materialItem && materialItem.isVisible) {
-						const selectedSuboption: CategoryMaterialSuboption | undefined =
-							materialItem.suboptions.find(
-								(suboption: CategorySuboption) =>
-									suboption.id === Number(selectedSuboptionId)
-							);
-						if (selectedSuboption) {
+						const selectedMaterial: Material | undefined = materialItem.suboptions.find(
+							(suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId)
+						);
+						if (selectedMaterial) {
 							const selectedMaterialItem: CategoryMaterialItem | undefined = (
 								selectedOptionRecords[option.id] as CategoryOption<true>
 							).suboptions[materialItemIndex];
 							if (selectedMaterialItem) {
-								selectedMaterialItem.suboptions[0] = selectedSuboption;
+								selectedMaterialItem.suboptions[0] = selectedMaterial;
 							}
 						} else {
 							selectedOptionRecords[option.id].suboptions[materialItemIndex] =
@@ -749,7 +746,7 @@ export default function Home() {
 				const materialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
 				for (const materialItem of materialItems) {
 					if (materialItem && materialItem.suboptions.length > 0) {
-						if (materialItem.suboptions.some((suboption: CategoryMaterialSuboption) => suboption?.id === suboptionId)) {
+						if (materialItem.suboptions.some((suboption: Material) => suboption?.id === suboptionId)) {
 							if (selectedOption.id === optionId && materialItem.id === materialItemId) {
 								return false;
 							}
@@ -1023,10 +1020,10 @@ export default function Home() {
 						<TabsList>
 							{productSubcategories
 								.filter(
-									(productSubcategory: ProductSubcategory) =>
+									(productSubcategory: CategoryProductSubcategory) =>
 										productSubcategory.id === selectedProductSubcategoryId
 								)
-								.map((productSubcategory: ProductSubcategory) => (
+								.map((productSubcategory: CategoryProductSubcategory) => (
 									<TabsTrigger
 										flexShrink={0}
 										value={`${productSubcategory.id}`}
@@ -1059,7 +1056,7 @@ export default function Home() {
 										<DrawerBody>
 											<VStack separator={<StackSeparator />} p="4">
 												{productSubcategories.map(
-													(productSubcategory: ProductSubcategory) => (
+													(productSubcategory: CategoryProductSubcategory) => (
 														<Link
 															key={`li-productSubcategory-${productSubcategory.id}`}
 															fontSize={20}
@@ -1107,7 +1104,7 @@ export default function Home() {
 						}}
 					>
 						{productSubcategories.map(
-							(productSubcategory: ProductSubcategory) => (
+							(productSubcategory: CategoryProductSubcategory) => (
 								<TabsTrigger
 									flexShrink={0}
 									value={`${productSubcategory.id}`}
@@ -1129,7 +1126,7 @@ export default function Home() {
 				<TabsList>
 					{displayedPrintingTypes.map(
 						useCallback(
-							(printingType: PrintingType) => (
+							(printingType: CategoryPrintingType) => (
 								<TabsTrigger
 									value={`${printingType.id}`}
 									key={`printingType-${printingType.id}`}

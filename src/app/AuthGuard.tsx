@@ -5,7 +5,7 @@ import { useAppDispatch, useAppSelector } from "@/lib/hooks";
 import { RootState } from "@/lib/store";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import { usePathname, useRouter } from "next/navigation";
-import { PropsWithChildren, useEffect, useState } from "react";
+import { PropsWithChildren, RefObject, useEffect, useRef, useState } from "react";
 
 /**
  * Decode a JWT and return its payload.
@@ -26,19 +26,19 @@ export default function AuthGuard({ children }: PropsWithChildren) {
   const dispatch = useAppDispatch();
   const isAuthenticated: boolean = useAppSelector((state: RootState) => state.auth.isAuthenticated);
   const [allowed, setAllowed] = useState(false);
+  const isValid: RefObject<boolean> = useRef<boolean>(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isValid.current) {
       return;
     }
     const token: string | null = localStorage.getItem("jwtToken");
     const isLoginPage = pathname === "/login";
-    let isValid: boolean = false;
 
     if (token) {
       const payload: JwtPayload | null = getPayload(token);
       if (payload && payload.sub && payload.exp && payload.exp * 1000 > Date.now()) {
-        isValid = true;
+        isValid.current = true;
         dispatch(setAuthenticated(true));
         dispatch(fetchUserById(payload.sub));
       } else {
@@ -47,10 +47,10 @@ export default function AuthGuard({ children }: PropsWithChildren) {
       }
     }
 
-    if (!isValid && !isLoginPage) {
+    if (!isValid.current && !isLoginPage) {
       // no valid token and not already on login
       router.replace("/login");
-    } else if (isValid && isLoginPage) {
+    } else if (isValid.current && isLoginPage) {
       // already authenticated but on login page
       router.replace("/");
       dispatch(setAuthenticated(true));

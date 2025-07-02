@@ -1,5 +1,5 @@
 import { ActionReducerMapBuilder, createAsyncThunk, createSlice, PayloadAction, SerializedError } from "@reduxjs/toolkit";
-import { CategoryAllMapping, CategoryMaterialItem, CategoryMaterialSuboption, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "./categories.slice";
+import { CategoryAllMapping, CategoryMaterialItem, CategoryOption, CategorySuboption, CategoryPrintingType, CategoryProductSubcategory, MaterialDisplay } from "./categories.slice";
 import CalculationUtil from "@/app/utils/CalculationUtil";
 import { RootState } from "../store";
 import { Customer, CustomerTier } from "./customers.slice";
@@ -125,7 +125,7 @@ interface NewQuotationHistory {
   // categorySuboptions: CategorySuboption[];
   categoryAllMappings: CategoryAllMapping[];
   
-  materials: CategoryMaterialSuboption[];
+  materialDisplays: MaterialDisplay[];
 
   /**
    * 成本总价（元）
@@ -269,11 +269,11 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
       if (!user) {
         return [];
       }
-      const categoryProductSubcategory: ProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
+      const categoryProductSubcategory: CategoryProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
       if (!categoryProductSubcategory) {
         return [];
       }
-      const categoryPrintingType: PrintingType | undefined = (getState() as RootState).categories.printingTypes.find(({id}) => id === categoryPrintingTypeId);
+      const categoryPrintingType: CategoryPrintingType | undefined = (getState() as RootState).categories.printingTypes.find(({id}) => id === categoryPrintingTypeId);
       if (!categoryPrintingType) {
         return [];
       }
@@ -381,11 +381,6 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
                 }
               }
             }
-          // } else {
-          //   const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-          //   for (let n: number = 0; n < suboptions.length; ++n) {
-          //     totalUnitPricePerSquareMeter += suboptions[n].unitPricePerSquareMeter || 0;
-          //   }
           }
         }
         const materialCost: number = materialArea * totalUnitPricePerSquareMeter;
@@ -485,7 +480,7 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
           quantityPerStyle: `${ baseCase.quantityPerStyle }`,
           totalQuantity: `${ baseCase.totalQuantity }`,
           categoryAllMappings: categoryAllMappings,
-          materials: materials,
+          materialDisplays: materials.map(({displays}) => displays[0]),
           totalCostInCNY: totalCostInCNY,
           totalPriceInCNY: totalPriceInCNY,
           totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
@@ -524,11 +519,11 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
     if (!user) {
       return [];
     }
-    const categoryProductSubcategory: ProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
+    const categoryProductSubcategory: CategoryProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
     if (!categoryProductSubcategory) {
       return [];
     }
-    const categoryPrintingType: PrintingType | undefined = (getState() as RootState).categories.printingTypes.find(({id}) => id === categoryPrintingTypeId);
+    const categoryPrintingType: CategoryPrintingType | undefined = (getState() as RootState).categories.printingTypes.find(({id}) => id === categoryPrintingTypeId);
     if (!categoryPrintingType) {
       return [];
     }
@@ -743,7 +738,7 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         quantityPerStyle: `${ baseCase.quantityPerStyle }`,
         totalQuantity: `${ baseCase.totalQuantity }`,
         categoryAllMappings: categoryAllMappings,
-        materials: materials,
+        materialDisplays: materials.map(({displays}) => displays[0]),
         totalCostInCNY: totalCostInCNY,
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
@@ -784,11 +779,11 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
     if (!user) {
       return [];
     }
-    const categoryProductSubcategory: ProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
+    const categoryProductSubcategory: CategoryProductSubcategory | undefined = (getState() as RootState).categories.productSubcategories.find(({id}) => id === categoryProductSubcategoryId);
     if (!categoryProductSubcategory) {
       return [];
     }
-    const categoryPrintingType: PrintingType | undefined = (getState() as RootState).categories.printingTypes.find(({id}) => id === categoryPrintingTypeId);
+    const categoryPrintingType: CategoryPrintingType | undefined = (getState() as RootState).categories.printingTypes.find(({id}) => id === categoryPrintingTypeId);
     if (!categoryPrintingType) {
       return [];
     }
@@ -1006,7 +1001,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
         quantityPerStyle: `${ baseCase.quantityPerStyle }`,
         totalQuantity: `${ baseCase.totalQuantity }`,
         categoryAllMappings: categoryAllMappings,
-        materials: materials,
+        materialDisplays: materials.map(({displays}) => displays[0]),
         totalCostInCNY: totalCostInCNY,
         totalPriceInCNY: totalPriceInCNY,
         totalPriceInUSD: totalPriceInCNY / exchangeRateValue,
@@ -1041,8 +1036,8 @@ export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalcul
     if (!width || !height) {
       return cases.map(() => 0);
     }
-    const productSubcategories: ProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
-    const selectedProductSubcategory: ProductSubcategory | undefined = productSubcategories.filter((productSubcategory: ProductSubcategory) => productSubcategory.id === categoryProductSubcategoryId)[0];
+    const productSubcategories: CategoryProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
+    const selectedProductSubcategory: CategoryProductSubcategory | undefined = productSubcategories.filter((productSubcategory: CategoryProductSubcategory) => productSubcategory.id === categoryProductSubcategoryId)[0];
     if (selectedProductSubcategory) {
       let surfaceDensity: number = 0;
       for (const option of options) {

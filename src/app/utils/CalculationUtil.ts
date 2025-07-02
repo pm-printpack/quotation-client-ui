@@ -1,4 +1,4 @@
-import { CategoryAllMapping, CategoryMaterialItem, CategoryMaterialSuboption, CategoryOption, CategorySuboption, PrintingType, ProductSubcategory } from "@/lib/features/categories.slice";
+import { CategoryAllMapping, CategoryMaterialItem, Material, CategoryOption, CategorySuboption, CategoryPrintingType, CategoryProductSubcategory } from "@/lib/features/categories.slice";
 
 const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
   [0,   507.500,  532.900,  558.300,  609.100,  634.500,  685.300],
@@ -134,16 +134,16 @@ export default {
     return result.join("\n");
   },
 
-  splitCatgeoryOptions: (categoryProductSubcategory: ProductSubcategory, categoryPrintingType: PrintingType, options: CategoryOption[]): {categoryAllMappings: CategoryAllMapping[], categorySuboptions: CategorySuboption[]; materials: CategoryMaterialSuboption[];} => {
+  splitCatgeoryOptions: (categoryProductSubcategory: CategoryProductSubcategory, categoryPrintingType: CategoryPrintingType, options: CategoryOption[]): {categoryAllMappings: CategoryAllMapping[], categorySuboptions: CategorySuboption[]; materials: Material[];} => {
     const categoryAllMappings: CategoryAllMapping[] = [];
     const categorySuboptions: CategorySuboption[] = [];
-    const materials: CategoryMaterialSuboption[] = [];
+    const materials: Material[] = [];
     for (const option of options) {
       if (option.isMaterial) {
         const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
         for (const materialItem of materialItems) {
           if (materialItem) {
-            const suboptions: CategoryMaterialSuboption[] = materialItem.suboptions;
+            const suboptions: Material[] = materialItem.suboptions;
             for (const suboption of suboptions) {
               if (suboption) {
                 materials.push(suboption);
