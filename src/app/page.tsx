@@ -201,12 +201,6 @@ export default function Home() {
 	}, [printingTypes, selectedPrintingTypeId]);
 
 	useEffect(() => {
-		if (!selectedPrintingTypeId) {
-			setSelectedPrintingTypeId(printingTypes[0]?.id);
-		}
-	}, [selectedPrintingTypeId, printingTypes]);
-
-	useEffect(() => {
 		const selectedProductSubcategory: CategoryProductSubcategory | undefined =
 			productSubcategories.find(
 				({ id }) => id === selectedProductSubcategoryId
@@ -240,74 +234,59 @@ export default function Home() {
 		}
 	}, [selectedProductSubcategoryId, selectedPrintingTypeId]);
 
-	const filterAndFormatSelectedOptionRecords =
-		useCallback((): CategoryOption<boolean>[] => {
-			const selectedOptions: (CategoryOption<boolean> | undefined)[] =
-				JSON.parse(JSON.stringify(Object.values(selectedOptionRecords)));
-			for (let i: number = 0; i < selectedOptions.length; ++i) {
-				const selectedOption: CategoryOption | undefined = selectedOptions[i];
-				if (!selectedOption) {
-					continue;
-				}
-				const optionIndex: number = options.findIndex(
-					({ id }: CategoryOption) => id === selectedOption.id
-				);
-				if (optionIndex > -1) {
-					const option: CategoryOption = options[optionIndex];
-					if (selectedOption.isMaterial) {
-						const selectedMaterialItems: (CategoryMaterialItem | undefined)[] =
-							(selectedOption as CategoryOption<true>).suboptions;
-						const materialItems: (CategoryMaterialItem | undefined)[] = (
-							option as CategoryOption<true>
-						).suboptions;
-						for (let j: number = 0; j < selectedMaterialItems.length; ++j) { // layers
-							const selectedMaterialItem: CategoryMaterialItem | undefined =
-								selectedMaterialItems[j];
-							const materialItem: CategoryMaterialItem | undefined =
-								materialItems[j];
-							if (materialItem) {
-								if (selectedMaterialItem) {
-									const selectedMaterials: Material[] = selectedMaterialItem.suboptions;
-									for (let n: number = 0; n < selectedMaterials.length; ++n) {
-										if (
-											!materialItem.suboptions.some(
-												({ id }) => id === selectedMaterials[n].id
-											)
-										) {
-											selectedMaterials.splice(n, 1);
-											--n;
-										}
+	const filterAndFormatSelectedOptionRecords = useCallback((): CategoryOption<boolean>[] => {
+		const selectedOptions: (CategoryOption<boolean> | undefined)[] = JSON.parse(JSON.stringify(Object.values(selectedOptionRecords)));
+		for (let i: number = 0; i < selectedOptions.length; ++i) {
+			const selectedOption: CategoryOption | undefined = selectedOptions[i];
+			if (!selectedOption) {
+				continue;
+			}
+			const optionIndex: number = options.findIndex(({ id }: CategoryOption) => id === selectedOption.id);
+			if (optionIndex > -1) {
+				const option: CategoryOption = options[optionIndex];
+				if (selectedOption.isMaterial) {
+					const selectedMaterialItems: (CategoryMaterialItem | undefined)[] = (selectedOption as CategoryOption<true>).suboptions;
+					const materialItems: (CategoryMaterialItem | undefined)[] = (option as CategoryOption<true>).suboptions;
+					for (let j: number = 0; j < selectedMaterialItems.length; ++j) { // layers
+						const selectedMaterialItem: CategoryMaterialItem | undefined = selectedMaterialItems[j];
+						const materialItem: CategoryMaterialItem | undefined = materialItems[j];
+						if (materialItem) {
+							if (selectedMaterialItem) {
+								const selectedMaterials: Material[] = selectedMaterialItem.suboptions;
+								for (let n: number = 0; n < selectedMaterials.length; ++n) {
+									if (
+										!materialItem.suboptions.some(
+											({ id }) => id === selectedMaterials[n].id
+										)
+									) {
+										selectedMaterials.splice(n, 1);
+										--n;
 									}
 								}
-							} else {
-								(selectedOption as CategoryOption<true>).suboptions[j] =
-									undefined;
 							}
-						}
-					} else {
-						const selectedSuboptions: CategorySuboption[] = (
-							selectedOption as CategoryOption<false>
-						).suboptions;
-						for (let j: number = 0; j < selectedSuboptions.length; ++j) {
-							if (
-								(option as CategoryOption<false>).suboptions.some(
-									({ id }) => selectedSuboptions[j].id
-								)
-							) {
-								continue;
-							}
-							selectedSuboptions.splice(j, 1);
-							--j;
+						} else {
+							(selectedOption as CategoryOption<true>).suboptions[j] = undefined;
 						}
 					}
 				} else {
-					selectedOptions[i] = undefined;
+					const selectedSuboptions: CategorySuboption[] = (selectedOption as CategoryOption<false>).suboptions;
+					for (let j: number = 0; j < selectedSuboptions.length; ++j) {
+						if ((option as CategoryOption<false>).suboptions.some(({ id }) => selectedSuboptions[j].id === id)) {
+							continue;
+						}
+						selectedSuboptions.splice(j, 1);
+						--j;
+					}
 				}
+			} else {
+				selectedOptions[i] = undefined;
 			}
-			return selectedOptions.filter((option: CategoryOption<boolean> | undefined) => !!option);
-		}, [selectedOptionRecords, options]);
+		}
+		console.log("selectedOptions: ", selectedOptions);
+		return selectedOptions.filter((option: CategoryOption<boolean> | undefined) => !!option);
+	}, [selectedOptionRecords, options]);
 
-	const isResultValidate = useCallback((formValues?: FormValues): boolean => {
+	const isFormValuesValidate = useCallback((formValues?: FormValues): boolean => {
 		// To check size area
 		if (printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name?.toLowerCase() === "digital printing") {
 			let hasError: boolean = false;
@@ -342,8 +321,10 @@ export default function Home() {
 		)) {
 			return false;
 		}
+		return true;
+	}, [hasGusset]);
 
-		// To check options area
+	const isSelectedOptionsValidate = useCallback((selectedOptions: CategoryOption<boolean>[]) => {
 		const requiredOprions: CategoryOption[] = options.filter(({isRequired}) => isRequired);
 		for (let i: number = 0; i < requiredOprions.length; ++i) {
 			const option: CategoryOption = requiredOprions[i];
@@ -354,21 +335,44 @@ export default function Home() {
 					const materialItem: CategoryMaterialItem | undefined = materialItems[j];
 					hasSuboptions = !!(materialItem && materialItem.suboptions.length > 0);
 				}
-				if (hasSuboptions && !selectedOptionRecords[option.id]) {
-					return false;
+				// if (hasSuboptions && !selectedOptionRecords[option.id]) {
+				if (hasSuboptions) {
+					const selectedMaterialOption: CategoryOption<true> | undefined = selectedOptions.find(({id}) => option.id === id) as (CategoryOption<true> | undefined);
+					if (!selectedMaterialOption?.suboptions?.length) {
+						return false;
+					}
+					const selectedMaterialAllSuboptions = [];
+					for (const materialItem of selectedMaterialOption.suboptions) {
+						if (materialItem) {
+							for (const materialSuboption of materialItem.suboptions) {
+								if (materialSuboption) {
+									selectedMaterialAllSuboptions.push(materialSuboption);
+								}
+							}
+						}
+					}
+					if (selectedMaterialAllSuboptions.length === 0) {
+						return false;
+					}
 				}
 			} else {
-				if ((option as CategoryOption<false>).suboptions.length > 0 && !selectedOptionRecords[option.id]) {
+				if ((option as CategoryOption<false>).suboptions.length > 0 && !selectedOptions.find(({id}) => option.id === id)?.suboptions?.length) {
 					return false;
 				}
 			}
 		}
 		return true;
-	}, [hasGusset, options, selectedOptionRecords]);
+	}, [options]);
 
 	const onSubmit = useCallback(useDebouncedCallback(
 		(values: FormValues) => {
-			if (!isResultValidate(values)) {
+			if (!isFormValuesValidate(values)) {
+				return;
+			}
+			const formattedSelectedOptions: CategoryOption<boolean>[] = filterAndFormatSelectedOptionRecords();
+			setFormattedSelectedOptions(formattedSelectedOptions);
+			console.log("formattedSelectedOptions: ", formattedSelectedOptions);
+			if (!isSelectedOptionsValidate(formattedSelectedOptions)) {
 				return;
 			}
 			isSuggestedSKUs([]);
@@ -379,18 +383,10 @@ export default function Home() {
 					return;
 				}
 				const selectedPrintingType: CategoryPrintingType | undefined =
-					printingTypes.find(
-						(printingType: CategoryPrintingType) =>
-							printingType.id === selectedPrintingTypeId
-					);
+					printingTypes.find((printingType: CategoryPrintingType) => printingType.id === selectedPrintingTypeId);
 				if (!selectedPrintingType) {
 					return;
 				}
-				const formattedSelectedOptions: CategoryOption<boolean>[] =
-					filterAndFormatSelectedOptionRecords();
-        console.log("formattedSelectedOptions: ", formattedSelectedOptions);
-        console.log("selectedOptionRecords: ", selectedOptionRecords);
-        setFormattedSelectedOptions(formattedSelectedOptions);
         dispatch(showMaterialItemsBySelectedOptions(formattedSelectedOptions));
 				if (selectedPrintingType.name.toLowerCase() === "digital printing") {
 					dispatch(
@@ -467,9 +463,9 @@ export default function Home() {
 			selectedProductSubcategoryId,
 			printingTypes,
 			selectedPrintingTypeId,
-      selectedOptionRecords,
 			filterAndFormatSelectedOptionRecords,
-			isResultValidate
+			isFormValuesValidate,
+			isSelectedOptionsValidate
 		]
 	);
 
@@ -663,12 +659,9 @@ export default function Home() {
 		[]
 	);
 
-	const onSelectedPrintingTypeChange = useCallback(
-		({ value }: { value: string }) => {
-			setSelectedPrintingTypeId(Number(value));
-		},
-		[]
-	);
+	const onSelectedPrintingTypeChange = useCallback(({ value }: { value: string }) => {
+		setSelectedPrintingTypeId(Number(value));
+	}, []);
 
 	const clearSelectedMaterialSuboption = useCallback(
 		(
@@ -1599,7 +1592,7 @@ export default function Home() {
 					</VStack>
 				)}
 				{
-					(formValues?.cases?.length && isResultValidate(formValues))
+					(formValues?.cases?.length && isFormValuesValidate(formValues) && isSelectedOptionsValidate(formattedSelectedOptions))
 					?
 					(
 						<VStack
