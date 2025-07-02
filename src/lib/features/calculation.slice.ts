@@ -534,7 +534,12 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
     for (const baseCase of cases) {
       // Printing Cost
       const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / numOfMatchedModulus) * numOfMatchedModulus;
-      const multiple: number = Math.floor(baseCase.numOfStyles / numOfMatchedModulus);
+      let multiple: number = 0;
+      if (baseCase.numOfStyles % numOfMatchedModulus === 0) {
+        multiple = baseCase.numOfStyles / numOfMatchedModulus - 1;
+      } else {
+        multiple = Math.floor(baseCase.numOfStyles / numOfMatchedModulus);
+      }
       let printingLength: number = 0;
       if (baseCase.numOfStyles <= numOfMatchedModulus) {
         if (baseCase.numOfStyles === 1 || numOfMatchedModulus % baseCase.numOfStyles === 0) {
