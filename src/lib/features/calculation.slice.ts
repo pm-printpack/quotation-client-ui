@@ -289,6 +289,8 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
           printingWidthSide = ((gusset || 0) + 10) * 2;
         } else if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
           printingWidth = (height + 10) * 2 + (gusset || 0) + 6 + 24;
+        } else if (categoryProductSubcategory.name.toLowerCase() === "4 side seal bag") {
+          printingWidth = (width + (gusset || 0) + 20) * 2;
         } else {
           printingWidth = (height + 10) * 2 + (gusset || 0);
         }
@@ -304,7 +306,7 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         }
         let printingQuantity: number = 0;
         let printingQuantitySide: number = 0;
-        if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+        if (["3 side seal bag", "stand-up bag", "4 side seal bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
           printingQuantity = Math.ceil(baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerPrinting);
         } else {
           printingQuantity = baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerPrinting;
@@ -639,10 +641,7 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
       let bagMakingCost: number = 0;
       const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "zipper type")[0];
       const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLowerCase();
-      let edgeWidth: number = 35;
-      if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
-        edgeWidth = 100;
-      }
+      let edgeWidth: number = 100;
       if (baseCase.numOfStyles <= numOfMatchedModulus) {
         if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
           if (customShaped) {
@@ -658,7 +657,11 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           }
         }
         if (width < edgeWidth) {
-          bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.totalQuantity);
+          if (numOfMatchedModulus % baseCase.numOfStyles === 0) {
+            bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.totalQuantity);
+          } else {
+            bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.quantityPerStyle * numOfMatchedModulus);
+          }
         }
       } else {
         const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
@@ -683,7 +686,7 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           }
         }
         if (width < edgeWidth) {
-          multipleLengthSinglePrintingCost = Math.max(multipleLengthSinglePrintingCost, 0.02 * baseCase.totalQuantity);
+          multipleLengthSinglePrintingCost = Math.max(multipleLengthSinglePrintingCost, 0.02 * baseCase.quantityPerStyle * numOfMatchedModulus);
         }
         let remainderLengthPrintingCost: number = 0;
         if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
@@ -700,7 +703,11 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           }
         }
         if (width < edgeWidth) {
-          remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.totalQuantity);
+          if (numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
+            remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus));
+          } else {
+            remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.quantityPerStyle * numOfMatchedModulus);
+          }
         }
         bagMakingCost = multipleLengthSinglePrintingCost * multiple+ remainderLengthPrintingCost;
       }
