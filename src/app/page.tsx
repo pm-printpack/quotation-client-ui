@@ -366,6 +366,7 @@ export default function Home() {
 
 	const onSubmit = useCallback(useDebouncedCallback(
 		(values: FormValues) => {
+			isSuggestedSKUs([]);
 			if (!isFormValuesValidate(values)) {
 				return;
 			}
@@ -375,7 +376,6 @@ export default function Home() {
 			if (!isSelectedOptionsValidate(formattedSelectedOptions)) {
 				return;
 			}
-			isSuggestedSKUs([]);
 			setFormValues(undefined);
 			console.log(values);
 			if (values) {
