@@ -312,7 +312,8 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
           printingQuantity = baseCase.totalQuantity / horizontalLayoutCount / numOfBagsPerPrinting;
         }
         if (isSelectedFlatBottomBag) {
-          printingQuantitySide = baseCase.totalQuantity / horizontalLayoutCountSide / numOfBagsPerPrintingSide;
+          printingQuantity = Math.ceil(printingQuantity);
+          printingQuantitySide = Math.ceil(baseCase.totalQuantity / horizontalLayoutCountSide / numOfBagsPerPrintingSide);
         } 
         let printingCost: number = 0;
         let printingCostSide: number = 0;
@@ -806,13 +807,15 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       // Material Cost
       let printingLengthPerPackage: number = 0;
       let printingLengthPerPackageSide: number = 0;
-      if (categoryProductSubcategory.name.toLowerCase() === "4 side seal bag") {
-        printingLengthPerPackage = (height + 2.5) * 2;
+      if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+        printingLengthPerPackage = width + 5;
+      } else if (categoryProductSubcategory.name.toLowerCase() === "4 side seal bag") {
+        printingLengthPerPackage = height + 5;
+      } else if (isSelectedFlatBottomBag) {
+        printingLengthPerPackage = width + 5;
+        printingLengthPerPackageSide = height + 5;
       } else {
         printingLengthPerPackage = (width + 2.5) * 2;
-      }
-      if (isSelectedFlatBottomBag) {
-        printingLengthPerPackageSide = (height + 2.5) * 2;
       }
       const customShaped: boolean = CalculationUtil.isCustomShaped(options);
       let materialWidth: number = 0;

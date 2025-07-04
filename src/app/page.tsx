@@ -1005,6 +1005,52 @@ export default function Home() {
 		[formValues, selectedOptionRecords, totalWeights, totalPrices, exchangeRate]
 	);
 
+	const getWidthRules = useCallback(() => {
+		const selectedPrintingTypes: CategoryPrintingType | undefined = printingTypes.find(({id}) => id === selectedPrintingTypeId);
+		if (selectedPrintingTypes) {
+			switch (selectedPrintingTypes.name.toLowerCase()) {
+				case "offset printing":
+					return {
+						max: {
+							value: 650,
+							message: "The bag width exceed 650mm, please contact the sales for quote."
+						}
+					};
+				case "gravure printing":
+					return {
+						max: {
+							value: 500,
+							message: "The bag width exceed 500mm, please contact the sales for quote."
+						}
+					};
+			}
+		}
+		return {};
+	}, [printingTypes, selectedPrintingTypeId]);
+
+	const getHeightRules = useCallback(() => {
+		const selectedPrintingTypes: CategoryPrintingType | undefined = printingTypes.find(({id}) => id === selectedPrintingTypeId);
+		if (selectedPrintingTypes) {
+			switch (selectedPrintingTypes.name.toLowerCase()) {
+				case "offset printing":
+					return {
+						max: {
+							value: 240,
+							message: "The bag width exceed 240mm, please contact the sales for quote."
+						}
+					};
+				case "gravure printing":
+					return {
+						max: {
+							value: 500,
+							message: "The bag width exceed 500mm, please contact the sales for quote."
+						}
+					};
+			}
+		}
+		return {};
+	}, [printingTypes, selectedPrintingTypeId]);
+
 	return (
 		<VStack w="full" h="full" p={{ base: "2", md: "4" }} align="flex-start">
 			{isMobile ? (
@@ -1170,6 +1216,7 @@ export default function Home() {
 									<Controller
 										name="width"
 										control={control}
+										rules={getWidthRules()}
 										render={({ field }) => (
 											<NumberInputRoot
 												min={1}
@@ -1216,6 +1263,7 @@ export default function Home() {
 									<Controller
 										name="height"
 										control={control}
+										rules={getHeightRules()}
 										render={({ field }) => (
 											<NumberInputRoot
 												min={1}
