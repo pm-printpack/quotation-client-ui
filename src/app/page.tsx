@@ -25,6 +25,19 @@ import {
 	Box,
 	Button,
 	Center,
+	Checkbox,
+	CheckboxCardContent,
+	CheckboxCardControl,
+	CheckboxCardDescription,
+	CheckboxCardHiddenInput,
+	CheckboxCardIndicator,
+	CheckboxCardLabel,
+	CheckboxCardRoot,
+	CheckboxControl,
+	CheckboxGroup,
+	CheckboxHiddenInput,
+	CheckboxLabel,
+	CheckboxRoot,
 	ClipboardCopyText,
 	ClipboardIndicator,
 	ClipboardRoot,
@@ -45,6 +58,7 @@ import {
 	FieldLabel,
 	FieldRoot,
 	Flex,
+	For,
 	Heading,
 	HStack,
 	IconButton,
@@ -70,7 +84,7 @@ import {
 	useBreakpointValue,
 	VStack
 } from "@chakra-ui/react";
-import { Fragment, MouseEvent, Ref, useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, MouseEvent, Ref, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LuPanelRightOpen, LuPlus } from "react-icons/lu";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import styles from "./page.module.css";
@@ -85,6 +99,7 @@ import {
 import CalculationUtil from "./utils/CalculationUtil";
 import { useDebouncedCallback } from "use-debounce";
 import { fetchExchangeRate } from "@/lib/features/environment.slice";
+import { CheckboxCard } from "@/components/ui/checkbox-card";
 
 type BaseCaseFormValues = BaseCaseValue;
 
@@ -173,6 +188,9 @@ export default function Home() {
 	const quotationResultRef: Ref<HTMLDivElement> = useRef(null);
 	const [quotationTextResult, setQuotationTextResult] = useState<string>("");
 
+	const selectedProductSubcategory: CategoryProductSubcategory | undefined = useMemo(() => productSubcategories.find(({ id }) => id === selectedProductSubcategoryId), [productSubcategories, selectedProductSubcategoryId]);
+	const selectedPrintingType: CategoryPrintingType | undefined = useMemo(() => printingTypes.find((printingType: CategoryPrintingType) => printingType.id === selectedPrintingTypeId), [printingTypes, selectedPrintingTypeId]);
+
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
 		dispatch(fetchAllProductSubcategories());
@@ -201,14 +219,7 @@ export default function Home() {
 	}, [printingTypes, selectedPrintingTypeId]);
 
 	useEffect(() => {
-		const selectedProductSubcategory: CategoryProductSubcategory | undefined =
-			productSubcategories.find(
-				({ id }) => id === selectedProductSubcategoryId
-			);
-		if (
-			selectedProductSubcategory &&
-			selectedProductSubcategory.name.toLowerCase() === "film"
-		) {
+		if (selectedProductSubcategory?.name.toLowerCase() === "film") {
 			setDisplayedPrintingTypes(
 				printingTypes.filter(
 					({ name }) => name.toLowerCase() !== "offset printing"
@@ -218,7 +229,7 @@ export default function Home() {
 			return;
 		}
 		setDisplayedPrintingTypes(printingTypes);
-	}, [productSubcategories, selectedProductSubcategoryId, printingTypes]);
+	}, [selectedProductSubcategory, printingTypes]);
 
 	useEffect(() => {
 		if (selectedProductSubcategoryId && selectedPrintingTypeId) {
@@ -382,8 +393,6 @@ export default function Home() {
 				if (!values.width || !values.height) {
 					return;
 				}
-				const selectedPrintingType: CategoryPrintingType | undefined =
-					printingTypes.find((printingType: CategoryPrintingType) => printingType.id === selectedPrintingTypeId);
 				if (!selectedPrintingType) {
 					return;
 				}
@@ -461,7 +470,7 @@ export default function Home() {
 		[
 			hasGusset,
 			selectedProductSubcategoryId,
-			printingTypes,
+			selectedPrintingType,
 			selectedPrintingTypeId,
 			filterAndFormatSelectedOptionRecords,
 			isFormValuesValidate,
@@ -610,54 +619,72 @@ export default function Home() {
 		[selectedOptionRecords, handleSubmit, onSubmit, isMobile]
 	);
 
-	const getSelectedValueOfNonMaterialItem = useCallback(
-		(option: CategoryOption<false>): string | null => {
-			const selectedOption: CategoryOption | undefined =
-				selectedOptionRecords[option.id];
-			if (
-				selectedOption &&
-				(selectedOption as CategoryOption<false>).suboptions[0]
-			) {
-				return `${(selectedOption as CategoryOption<false>).suboptions[0].id}`;
+	const getSelectedValueOfNonMaterialItem = useCallback((option: CategoryOption<false>): string[] => {
+		const selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
+		const selectedIds: string[] = [];
+		if (selectedOption) {
+			for (const suboption of (selectedOption as CategoryOption<false>).suboptions) {
+				if (suboption && suboption.id) {
+					selectedIds.push(`${ suboption.id }`);
+				}
 			}
-			return null;
-		},
-		[selectedOptionRecords]
-	);
+		}
+		return selectedIds;
+	}, [selectedOptionRecords]);
 
-	const setSelectedValueOfNonMaterialItem = useCallback(
-		(option: CategoryOption<false>) => {
-			return ({ value: selectedSuboptionId }: { value: string | null }) => {
-				let selectedOption: CategoryOption | undefined =
-					selectedOptionRecords[option.id];
-				if (!selectedOption) {
-					selectedOptionRecords[option.id] = {
-						...option,
-						suboptions: []
-					};
-				}
-				if (selectedSuboptionId) {
-					selectedOptionRecords[option.id].suboptions =
-						option.suboptions.filter(
-							(suboption: CategorySuboption) =>
-								suboption.id === Number(selectedSuboptionId)
-						);
-					setSelectedOptionRecords({ ...selectedOptionRecords });
-				}
-				if (!isMobile) {
-					handleSubmit(onSubmit)();
-				}
-			};
-		},
-		[selectedOptionRecords, handleSubmit, onSubmit, isMobile]
-	);
+	const setSelectedValueOfNonMaterialItem = useCallback((option: CategoryOption<false>) => {
+		return ({ value: selectedSuboptionId }: { value: string | null }) => {
+			let selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
+			if (!selectedOption) {
+				selectedOptionRecords[option.id] = {
+					...option,
+					suboptions: []
+				};
+			}
+			if (selectedSuboptionId) {
+				selectedOptionRecords[option.id].suboptions = option.suboptions.filter(
+						(suboption: CategorySuboption) => suboption.id === Number(selectedSuboptionId)
+				);
+				setSelectedOptionRecords({ ...selectedOptionRecords });
+			}
+			if (!isMobile) {
+				handleSubmit(onSubmit)();
+			}
+		};
+	}, [selectedOptionRecords, handleSubmit, onSubmit, isMobile]);
 
-	const onSelectedProductSubcategoryChange = useCallback(
-		({ value }: { value: string }) => {
-			setSelectedProductSubcategoryId(Number(value));
-		},
-		[]
-	);
+	const setSelectedMultipleValueOfNonMaterialItem = useCallback((option: CategoryOption<false>) => {
+		return (valselectedSuboptionIds: string[] ) => {
+			let selectedOption: CategoryOption | undefined = selectedOptionRecords[option.id];
+			if (!selectedOption) {
+				selectedOptionRecords[option.id] = {
+					...option,
+					suboptions: []
+				};
+			}
+			for (const selectedOption of Object.values(selectedOptionRecords)) {
+				selectedOption.suboptions = [];
+			}
+			if (valselectedSuboptionIds && valselectedSuboptionIds.length > 0) {
+				const suboptions: CategorySuboption[] = [];
+				for (const selectedSuboptionId of valselectedSuboptionIds) {
+					const suboption: CategorySuboption | undefined = option.suboptions.find(({id}) => `${id}` === selectedSuboptionId);
+					if (suboption) {
+						suboptions.push(suboption);
+					}
+				}
+				selectedOptionRecords[option.id].suboptions = suboptions;
+			}
+			setSelectedOptionRecords({ ...selectedOptionRecords });
+			if (!isMobile) {
+				handleSubmit(onSubmit)();
+			}
+		};
+	}, [selectedOptionRecords, handleSubmit, onSubmit, isMobile]);
+
+	const onSelectedProductSubcategoryChange = useCallback(({ value }: { value: string }) => {
+		setSelectedProductSubcategoryId(Number(value));
+	}, []);
 
 	const onSelectedPrintingTypeChange = useCallback(({ value }: { value: string }) => {
 		setSelectedPrintingTypeId(Number(value));
@@ -723,7 +750,7 @@ export default function Home() {
 	const onUnselectedNonMaterialItem = useCallback(
 		(option: CategoryOption<false>, suboption: CategorySuboption) => {
 			return (event: MouseEvent<HTMLDivElement>) => {
-				if (getSelectedValueOfNonMaterialItem(option) === `${suboption.id}`) {
+				if (getSelectedValueOfNonMaterialItem(option)[0] === `${suboption.id}`) {
 					event.stopPropagation();
 					event.preventDefault();
 					clearSelectedNonMaterialSuboption(option);
@@ -888,44 +915,104 @@ export default function Home() {
 		]
 	);
 
+	const disableProductionProcessItem = useCallback((suboptionName: string): boolean => {
+		if (!selectedProductSubcategory || !selectedPrintingType) {
+			return false;
+		}
+		const selectedProductionProcessOption: CategoryOption<false> | undefined = Object.values(selectedOptionRecords).find(({name}) => name.toLowerCase() === "production process") as (CategoryOption<false> | undefined);
+		if (selectedProductionProcessOption) {
+			const selectedSuboptions: CategorySuboption[] = selectedProductionProcessOption.suboptions;
+			for (const selectedSuboption of selectedSuboptions) {
+				if (
+					["3 side seal bag", "stand-up bag", "4 side seal bag", "flat bottoom bag"].includes(selectedProductSubcategory.name.toLowerCase())
+					&& ["digital printing", "offset printing", "gravure printing"].includes(selectedPrintingType.name.toLowerCase())
+					&& ["round hole", "hang hole", "handle hole"].includes(selectedSuboption.name.toLowerCase())
+				) {
+					if (["round hole", "hang hole", "handle hole"].filter((name: string) => name !== selectedSuboption.name.toLowerCase()).includes(suboptionName.toLowerCase())) {
+						return true;
+					}
+				} else if (
+					"stand-up bag" === selectedProductSubcategory.name.toLowerCase()
+					&& "offset printing" === selectedPrintingType.name.toLowerCase()
+					&& ["transparent bottom", "bottom color", "bottom design"].includes(selectedSuboption.name.toLowerCase())
+				) {
+					if (["transparent bottom", "bottom color", "bottom design"].filter((name: string) => name !== selectedSuboption.name.toLowerCase()).includes(suboptionName.toLowerCase())) {
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}, [selectedOptionRecords, selectedProductSubcategory, selectedPrintingType]);
+
 	const renderNonMaterialItemArea = useCallback(
 		(option: CategoryOption<false>, index: number) => {
-			return (
-				<RadioCardRoot
-					orientation="vertical"
-					align="center"
-					w="full"
-					variant="outline"
-					key={`category-option-${option.id}`}
-					value={getSelectedValueOfNonMaterialItem(option)}
-					onValueChange={setSelectedValueOfNonMaterialItem(option)}
-				>
-					<SimpleGrid
+			if (option.name.toLowerCase() === "production process") {
+				return (
+					<CheckboxGroup w="full" onValueChange={setSelectedMultipleValueOfNonMaterialItem(option)}>
+						<SimpleGrid
+							gap={{ md: 4, base: 2 }}
+							templateColumns="repeat(auto-fit, minmax(10rem, 10rem))"
+						>
+							{
+								option.suboptions.map((suboption: CategorySuboption) => (
+									<CheckboxCard
+										key={`suboption-${suboption.id}`}
+										indicator={null}
+										htmlFor={`suboption-${suboption.id}`}
+										value={`${ suboption.id }`}
+										className={styles.radioCardItem}
+										label={
+											<Center w="full" p="2" fontSize="sm">
+												{suboption.name}
+											</Center>
+										}
+										disabled={disableProductionProcessItem(suboption.name)}
+									/>
+								))
+							}
+						</SimpleGrid>
+					</CheckboxGroup>
+				);
+			} else {
+				return (
+					<RadioCardRoot
+						orientation="vertical"
+						align="center"
 						w="full"
-						gap={{ md: 4, base: 2 }}
-						templateColumns="repeat(auto-fit, minmax(10rem, 10rem))"
+						variant="outline"
+						key={`category-option-${option.id}`}
+						value={getSelectedValueOfNonMaterialItem(option)[0]}
+						onValueChange={setSelectedValueOfNonMaterialItem(option)}
 					>
-						{option.suboptions.map((suboption: CategorySuboption) => (
-							<RadioCardItem
-								key={`suboption-${suboption.id}`}
-								value={`${suboption.id}`}
-								className={styles.radioCardItem}
-								onClick={onUnselectedNonMaterialItem(option, suboption)}
-							>
-								<RadioCardItemHiddenInput />
-								<RadioCardItemText>
-									<Center p="2" fontSize="sm">
-										{suboption.name}
-									</Center>
-								</RadioCardItemText>
-							</RadioCardItem>
-						))}
-					</SimpleGrid>
-				</RadioCardRoot>
-			);
+						<SimpleGrid
+							w="full"
+							gap={{ md: 4, base: 2 }}
+							templateColumns="repeat(auto-fit, minmax(10rem, 10rem))"
+						>
+							{option.suboptions.map((suboption: CategorySuboption) => (
+								<RadioCardItem
+									key={`suboption-${suboption.id}`}
+									value={`${suboption.id}`}
+									className={styles.radioCardItem}
+									onClick={onUnselectedNonMaterialItem(option, suboption)}
+								>
+									<RadioCardItemHiddenInput />
+									<RadioCardItemText>
+										<Center p="2" fontSize="sm">
+											{suboption.name}
+										</Center>
+									</RadioCardItemText>
+								</RadioCardItem>
+							))}
+						</SimpleGrid>
+					</RadioCardRoot>
+				);
+			}
 		},
 		[
 			setSelectedValueOfNonMaterialItem,
+			setSelectedMultipleValueOfNonMaterialItem,
 			getSelectedValueOfNonMaterialItem,
 			onUnselectedNonMaterialItem
 		]
@@ -1421,17 +1508,22 @@ export default function Home() {
 													</NumberInputRoot>
 												)}
 											/>
-											{suggestedSKUs[index] ? (
-												<FieldErrorText>
-													The optimal SKU count for the current size is a
-													multiple of {numOfMatchedModulus}. Consider increasing
-													or decreasing the SKU count for better efficiency.
-												</FieldErrorText>
-											) : null}
+											{
+												suggestedSKUs[index]
+												?
+												(
+													<FieldErrorText>
+														The optimal SKU count for the current size is a
+														multiple of {numOfMatchedModulus}. Consider increasing
+														or decreasing the SKU count for better efficiency.
+													</FieldErrorText>
+												)
+												:
+												null
+											}
 											<FieldErrorText>
 												{
-													(((errors.cases || [])[index] || {}).numOfStyles
-														?.message || "") as string
+													((errors.cases || [])[index] || {}).numOfStyles?.message || ""
 												}
 											</FieldErrorText>
 										</FieldRoot>
@@ -1440,9 +1532,7 @@ export default function Home() {
 												orientation={{ base: "vertical", sm: "horizontal" }}
 												justifyContent="flex-start"
 												w="auto"
-												invalid={
-													!!((errors.cases || [])[index] || {}).quantityPerStyle
-												}
+												invalid={ !!((errors.cases || [])[index] || {}).quantityPerStyle }
 											>
 												<FieldLabel
 													alignSelf="center"
@@ -1501,8 +1591,7 @@ export default function Home() {
 												/>
 												<FieldErrorText>
 													{
-														(((errors.cases || [])[index] || {})
-															.quantityPerStyle?.message || "") as string
+														((errors.cases || [])[index] || {}).quantityPerStyle?.message || ""
 													}
 												</FieldErrorText>
 											</FieldRoot>
@@ -1556,8 +1645,7 @@ export default function Home() {
 												/>
 												<FieldErrorText>
 													{
-														(((errors.cases || [])[index] || {}).totalQuantity
-															?.message || "") as string
+														((errors.cases || [])[index] || {}).totalQuantity?.message || ""
 													}
 												</FieldErrorText>
 											</FieldRoot>
@@ -1589,48 +1677,58 @@ export default function Home() {
 							gap="4"
 							css={{ "--field-label-width": "9.375rem" }}
 						>
-							{options.map((option: CategoryOption, index: number) => {
-								return (!option.isMaterial && option.suboptions.length > 0) ||
-									(option.isMaterial &&
-										option.suboptions.length > 0 &&
-										(option as CategoryOption<true>).suboptions.filter(
-											(suboption: CategoryMaterialItem | undefined) =>
-												suboption?.isVisible
-										).length > 0) ? (
-									<FieldRoot
-										orientation={{ base: "vertical", md: "horizontal" }}
-										key={`option-${option.id}`}
-										alignItems="flex-start"
-									>
-										<FieldLabel
-											alignSelf="flex-start"
-											justifyContent="flex-end"
+							{
+								options.map((option: CategoryOption, index: number) => (
+									!option.isMaterial && option.suboptions.length > 0)
+									|| (
+										option.isMaterial
+										&& option.suboptions.length > 0
+										&& (option as CategoryOption<true>).suboptions.filter(
+											(suboption: CategoryMaterialItem | undefined) => suboption?.isVisible
+										).length > 0
+									)
+									?
+									(
+										<FieldRoot
+											orientation={{ base: "vertical", md: "horizontal" }}
+											key={`option-${option.id}`}
+											alignItems="flex-start"
 										>
-											{
-												option.isRequired
-												?
-												<Text color="red.solid">*</Text>
-												:
-												null
-											}
-											<Text fontWeight="bold" lineHeight="2.25rem">
-												{option.name}:
-											</Text>
-										</FieldLabel>
-										<VStack w="full">
-											{option.isMaterial
-												? renderMaterialItemArea(
+											<FieldLabel
+												alignSelf="flex-start"
+												justifyContent="flex-end"
+											>
+												{
+													option.isRequired
+													?
+													<Text color="red.solid">*</Text>
+													:
+													null
+												}
+												<Text fontWeight="bold" lineHeight="2.25rem">
+													{option.name}:
+												</Text>
+											</FieldLabel>
+											<VStack w="full">
+												{
+													option.isMaterial
+													?
+													renderMaterialItemArea(
 														option as CategoryOption<true>,
 														index
-												  )
-												: renderNonMaterialItemArea(
+													)
+													:
+													renderNonMaterialItemArea(
 														option as CategoryOption<false>,
 														index
-												  )}
-										</VStack>
-									</FieldRoot>
-								) : null;
-							})}
+													)}
+											</VStack>
+										</FieldRoot>
+									)
+									:
+									null
+								)
+							}
 						</VStack>
 						<Box p="16" w="full">
 							<Button variant="solid" hideFrom="md" w="full" type="submit">

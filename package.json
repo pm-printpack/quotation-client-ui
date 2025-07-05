@@ -12,7 +12,7 @@
     "release": "release-it"
   },
   "dependencies": {
-    "@chakra-ui/react": "^3.19.1",
+    "@chakra-ui/react": "^3.21.1",
     "@emotion/react": "^11.14.0",
     "@reduxjs/toolkit": "^2.8.2",
     "axios": "^1.9.0",

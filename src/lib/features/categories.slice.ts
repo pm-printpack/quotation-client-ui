@@ -38,6 +38,7 @@ export interface CategoryAllMapping {
   categoryOption: CategoryOption;
   categorySuboptionId: number;
   categorySuboption: CategorySuboption;
+  isVisible: boolean;
   // quotationHistories: QuotationHistory[];
 }
 
