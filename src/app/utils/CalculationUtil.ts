@@ -1,5 +1,12 @@
 import { CategoryAllMapping, CategoryMaterialItem, Material, CategoryOption, CategorySuboption, CategoryPrintingType, CategoryProductSubcategory } from "@/lib/features/categories.slice";
 
+interface PrintingLengthCandidate {
+  coordinate: [number, number];
+  value: number;
+  numOfMatchedModulus: number;
+  matchedPerimeter: number;
+}
+
 const PERIMETER_AND_IMPOSITION_MATCHING_TABLE: number[][] = [
   [0,   507.500,  532.900,  558.300,  609.100,  634.500,  685.300],
   [15,  33.833,   35.527,   37.220,   40.607,   42.300,   45.687],
@@ -34,10 +41,11 @@ export default {
   },
 
   /**
+   * Under Offset Printing
    * 【袋子印刷长度范围】：异形：袋宽+10-20mm；非异形：袋宽+5-15mm
    * 【匹配模数】：按照最接近的尺寸在版辊表里匹配，从小增量优先
    */
-  calculateNumOfMatchedModulus: (width: number, height: number, options: CategoryOption<boolean>[]): {numOfMatchedModulus: number, matchedPerimeter: number} => {
+  calculateNumOfMatchedModulus: (width: number, height: number, sku: number, options: CategoryOption<boolean>[]): {numOfMatchedModulus: number, matchedPerimeter: number} => {
     let printingLengthRange: [number, number] = [width, width];
     let customShaped: boolean = false;
     const productionProcessOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLocaleLowerCase() === "production process")[0];
@@ -50,23 +58,85 @@ export default {
     } else {
       printingLengthRange = [width + 5, width + 15];
     }
-    const printingLengthCandidates: {coordinate: [number, number], value: number}[] = [];
+    const printingLengthCandidates: PrintingLengthCandidate[] = [];
     for (let i: number = 1; i < PERIMETER_AND_IMPOSITION_MATCHING_TABLE.length; ++i) {
       for (let j: number = 1; j < PERIMETER_AND_IMPOSITION_MATCHING_TABLE[i].length; ++j) {
         const elementOfTable: number = PERIMETER_AND_IMPOSITION_MATCHING_TABLE[i][j];
         if (elementOfTable >= printingLengthRange[0] && elementOfTable <= printingLengthRange[1]) {
+          const coordinate: [number, number] = [i, j];
           printingLengthCandidates.push({
-            coordinate: [i, j],
-            value: elementOfTable
+            coordinate: coordinate,
+            value: elementOfTable,
+            numOfMatchedModulus: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[coordinate[0]][0],
+            matchedPerimeter: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[0][coordinate[1]]
           });
         }
       }
     }
-    if (printingLengthCandidates.length > 0) {
-      const {coordinate} = printingLengthCandidates.sort((a: {coordinate: [number, number], value: number}, b: {coordinate: [number, number], value: number}) => a.value - b.value)[0];
+    console.log("printingLengthCandidates: ", printingLengthCandidates);
+    if (printingLengthCandidates.filter(({numOfMatchedModulus}) => numOfMatchedModulus > sku).length === printingLengthCandidates.length) {
+      const a1: PrintingLengthCandidate[] = printingLengthCandidates.filter(({numOfMatchedModulus}) => numOfMatchedModulus % sku === 0);
+      if (a1.length > 0) {
+        const {numOfMatchedModulus, matchedPerimeter} = a1.sort((a: {value: number}, b: {value: number}) => a.value - b.value)[0];
+        return {
+          numOfMatchedModulus: numOfMatchedModulus,
+          matchedPerimeter: matchedPerimeter
+        };
+      }
+    }
+    const b1: PrintingLengthCandidate[] = printingLengthCandidates.filter(({numOfMatchedModulus}) => numOfMatchedModulus === sku);
+    if (b1.length > 0) {
+      const {numOfMatchedModulus, matchedPerimeter} = b1[0];
       return {
-        numOfMatchedModulus: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[coordinate[0]][0],
-        matchedPerimeter: PERIMETER_AND_IMPOSITION_MATCHING_TABLE[0][coordinate[1]]
+        numOfMatchedModulus: numOfMatchedModulus,
+        matchedPerimeter: matchedPerimeter
+      };
+    }
+    if (printingLengthCandidates.filter(({numOfMatchedModulus}) => sku > numOfMatchedModulus).length === printingLengthCandidates.length) {
+      const c1: PrintingLengthCandidate[] = printingLengthCandidates.filter(({numOfMatchedModulus}) => sku % numOfMatchedModulus === 0);
+      if (c1.length === 1) {
+        const {numOfMatchedModulus, matchedPerimeter} = c1[0];
+        return {
+          numOfMatchedModulus: numOfMatchedModulus,
+          matchedPerimeter: matchedPerimeter
+        };
+      } else if (c1.length > 1) {
+        const {numOfMatchedModulus, matchedPerimeter} = c1.sort((a: {numOfMatchedModulus: number}, b: {numOfMatchedModulus: number}) => sku / a.numOfMatchedModulus - sku / b.numOfMatchedModulus)[0];
+        return {
+          numOfMatchedModulus: numOfMatchedModulus,
+          matchedPerimeter: matchedPerimeter
+        };
+      } else {
+        const d1: (PrintingLengthCandidate & {integer: number})[] = printingLengthCandidates
+          .map((candidate) => ({...candidate, integer: Math.floor(sku / candidate.numOfMatchedModulus)}))
+          .sort((a: {integer: number}, b: {integer: number}) => a.integer - b.integer);
+        if (d1[0].integer !== d1[1].integer) {
+          const {numOfMatchedModulus, matchedPerimeter} = d1[0];
+          return {
+            numOfMatchedModulus: numOfMatchedModulus,
+            matchedPerimeter: matchedPerimeter
+          };
+        } else {
+          let integer: number = d1[0].integer;
+          let i : number = 1;
+          for (; i < d1.length; ++i) {
+            if (d1[i].integer !== integer) {
+              break;
+            }
+          }
+          const {numOfMatchedModulus, matchedPerimeter} = d1.slice(0, i).sort((a: PrintingLengthCandidate, b: PrintingLengthCandidate) => a.value - b.value)[0];
+          return {
+            numOfMatchedModulus: numOfMatchedModulus,
+            matchedPerimeter: matchedPerimeter
+          };
+        }
+      }
+    }
+    if (printingLengthCandidates.length > 0) {
+      const {numOfMatchedModulus, matchedPerimeter} = printingLengthCandidates.sort((a: PrintingLengthCandidate, b: PrintingLengthCandidate) => a.value - b.value)[0];
+      return {
+        numOfMatchedModulus: numOfMatchedModulus,
+        matchedPerimeter: matchedPerimeter
       };
     }
     return {
@@ -164,12 +234,18 @@ export default {
               categoryOptionId: option.id,
               categoryOption: option,
               categorySuboptionId: suboption.id,
-              categorySuboption: suboption
+              categorySuboption: suboption,
+              isVisible: true
             });
           }
         }
       }
     }
     return {categoryAllMappings, categorySuboptions, materials};
+  },
+
+  getProductionProcessSuboptionByName: (suboptionNameInProductProcess: string, options: CategoryOption[]): CategorySuboption | undefined => {
+    const productionProcessOption: CategoryOption<false> | undefined = options.find(({name, isMaterial}) => !isMaterial && name.toLowerCase() === "production process") as (CategoryOption<false> | undefined);
+    return productionProcessOption?.suboptions.find(({name}) => name.toLowerCase() === suboptionNameInProductProcess.toLowerCase());
   }
 };

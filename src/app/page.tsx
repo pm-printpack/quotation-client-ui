@@ -412,19 +412,25 @@ export default function Home() {
 				} else if (
 					selectedPrintingType.name.toLowerCase() === "offset printing"
 				) {
-					const { numOfMatchedModulus, matchedPerimeter } =
+					const suggests: boolean[] = [];
+					for (let i: number = 0; i < values.cases.length; ++i) {
+						const baseCase: BaseCaseValue = values.cases[i];
+						const { numOfMatchedModulus, matchedPerimeter } =
 						CalculationUtil.calculateNumOfMatchedModulus(
 							values.width,
 							values.height,
+							baseCase.numOfStyles,
 							formattedSelectedOptions
 						);
-					const suggests: boolean[] = values.cases.map(
-						(baseCase: BaseCaseFormValues): boolean =>
-							Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) *
-								numOfMatchedModulus !==
-							(baseCase.numOfStyles || 0)
-					);
-					setNumOfMatchedModulus(numOfMatchedModulus);
+						baseCase.numOfMatchedModulus = numOfMatchedModulus;
+						baseCase.matchedPerimeter = matchedPerimeter;
+						if (baseCase.numOfStyles !== 1 && numOfMatchedModulus !== 1) {
+							suggests.push(
+								Math.round((baseCase.numOfStyles || 0) / numOfMatchedModulus) * numOfMatchedModulus !== (baseCase.numOfStyles || 0)
+							);
+						}
+					}
+					// setNumOfMatchedModulus(numOfMatchedModulus);
 					isSuggestedSKUs(suggests);
 					dispatch(
 						calculateTotalPriceByOffsetPrinting({
@@ -434,8 +440,8 @@ export default function Home() {
 							height: values.height,
 							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
-							numOfMatchedModulus: numOfMatchedModulus,
-							matchedPerimeter: matchedPerimeter,
+							// numOfMatchedModulus: numOfMatchedModulus,
+							// matchedPerimeter: matchedPerimeter,
 							options: formattedSelectedOptions
 						})
 					);
@@ -1099,8 +1105,8 @@ export default function Home() {
 				case "offset printing":
 					return {
 						max: {
-							value: 650,
-							message: "The bag width exceed 650mm, please contact the sales for quote."
+							value: 330,
+							message: "The bag width exceed 330mm, please contact the sales for quote."
 						}
 					};
 				case "gravure printing":

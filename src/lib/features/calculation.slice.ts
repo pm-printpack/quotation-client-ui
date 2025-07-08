@@ -215,6 +215,8 @@ export type BaseCaseValue = {
   numOfStyles: number;
   quantityPerStyle: number;
   totalQuantity: number;
+  numOfMatchedModulus?: number;
+  matchedPerimeter?: number;
 } & Record<string, number>;
 
 export type Size = {
@@ -347,6 +349,12 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         } else {
           printingCost = printingQuantity * 3.8;
         }
+        if (
+          ["3 side seal bag", "stand-up bag", "4 side seal bag", "flat bottoom bag"].includes(categoryProductSubcategory.name.toLowerCase())
+          && CalculationUtil.getProductionProcessSuboptionByName("Inner printing", options)
+        ) {
+          printingCost *= 2;
+        }
         console.log("printingWidth: ", printingWidth);
         console.log("horizontalLayoutCount: ", horizontalLayoutCount);
         console.log("numOfBagsPerPrinting: ", numOfBagsPerPrinting);
@@ -457,6 +465,12 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
             }
           }
         }
+        if (["3 side seal bag", "stand-up bag", "4 side seal bag", "flat bottoom bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+          const tinTieSuboption: CategorySuboption | undefined = CalculationUtil.getProductionProcessSuboptionByName("Tin Tie", options);
+          if (tinTieSuboption) {
+            bagMakingCost += tinTieSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
+          }
+        }
         console.log("bagMakingCost: ", bagMakingCost);
 
         // Die-Cutting Cost
@@ -511,10 +525,10 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
   }
 );
 
-export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], TotalPriceCalculationParams & {numOfMatchedModulus: number; matchedPerimeter:number;}>(
+export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(
   "calculation/calculateTotalPriceByOffsetPrinting",
-  async (params: TotalPriceCalculationParams & {numOfMatchedModulus: number; matchedPerimeter: number;}, {getState}): Promise<number[]> => {
-    const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, numOfMatchedModulus, matchedPerimeter, options } = params;
+  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+    const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, options } = params;
     if (!width || !height) {
       return [];
     }
@@ -533,46 +547,49 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
     const exchangeRateValue: number = (getState() as RootState).env.exchangeRate?.rate || 1;
     const newQuotationHistories: NewQuotationHistory[] = [];
     for (const baseCase of cases) {
+      if (!baseCase.numOfMatchedModulus || !baseCase.matchedPerimeter) {
+        return [];
+      }
       // Printing Cost
-      const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / numOfMatchedModulus) * numOfMatchedModulus;
+      const numOfSKUs4Printing: number = Math.ceil(baseCase.numOfStyles / baseCase.numOfMatchedModulus) * baseCase.numOfMatchedModulus;
       let multiple: number = 0;
-      if (baseCase.numOfStyles % numOfMatchedModulus === 0) {
-        multiple = baseCase.numOfStyles / numOfMatchedModulus - 1;
+      if (baseCase.numOfStyles % baseCase.numOfMatchedModulus === 0) {
+        multiple = baseCase.numOfStyles / baseCase.numOfMatchedModulus - 1;
       } else {
-        multiple = Math.floor(baseCase.numOfStyles / numOfMatchedModulus);
+        multiple = Math.floor(baseCase.numOfStyles / baseCase.numOfMatchedModulus);
       }
       let printingLength: number = 0;
-      if (baseCase.numOfStyles <= numOfMatchedModulus) {
-        if (baseCase.numOfStyles === 1 || numOfMatchedModulus % baseCase.numOfStyles === 0) {
+      if (baseCase.numOfStyles <= baseCase.numOfMatchedModulus) {
+        if (baseCase.numOfStyles === 1 || baseCase.numOfMatchedModulus % baseCase.numOfStyles === 0) {
           printingLength = (width + 10) * baseCase.totalQuantity / 1000 + 250;
         } else {
-          printingLength = (width + 10) * baseCase.totalQuantity / baseCase.numOfStyles * numOfMatchedModulus / 1000 + 250;
+          printingLength = (width + 10) * baseCase.totalQuantity / baseCase.numOfStyles * baseCase.numOfMatchedModulus / 1000 + 250;
         }
       } else {
-        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
         let remainderLength: number = 0;
-        if (baseCase.numOfStyles - multiple * numOfMatchedModulus === 1 || numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
-          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus) / 1000 + 250;
+        if (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus === 1 || baseCase.numOfMatchedModulus % (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) === 0) {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) / 1000 + 250;
         } else {
-          remainderLength = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
         }
         printingLength = multipleLength * multiple + remainderLength;
       }
 
       let printingCost: number = 0;
-      if (baseCase.numOfStyles <= numOfMatchedModulus) {
+      if (baseCase.numOfStyles <= baseCase.numOfMatchedModulus) {
         if (printingLength <= 1000) {
           printingCost = 1300;
         } else {
           printingCost = 1300 + (printingLength - 1000) * 0.2;
         }
       } else {
-        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
         let remainderLength: number = 0;
-        if (baseCase.numOfStyles - multiple * numOfMatchedModulus === 1 || numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
-          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus) / 1000 + 250;
+        if (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus === 1 || baseCase.numOfMatchedModulus % (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) === 0) {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) / 1000 + 250;
         } else {
-          remainderLength = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
         }
         let multipleLengthSinglePrintingCost: number = 0;
         if (multipleLength <= 1000) {
@@ -587,6 +604,50 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           remainderLengthPrintingCost = 1300 + (remainderLength - 1000) * 0.2;
         }
         printingCost = multipleLengthSinglePrintingCost * multiple + remainderLengthPrintingCost;
+      }
+      if (
+        ["3 side seal bag", "stand-up bag", "4 side seal bag", "flat bottoom bag"].includes(categoryProductSubcategory.name.toLowerCase())
+        && CalculationUtil.getProductionProcessSuboptionByName("Inner printing", options)
+      ) {
+        printingCost *= 2;
+      }
+      if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+        if (CalculationUtil.getProductionProcessSuboptionByName("UV", options)) {
+          let uvCost: number = 0;
+          if (baseCase.numOfStyles <= baseCase.numOfMatchedModulus) {
+            uvCost = printingLength > 300 ? 500 + printingLength - 300 : 500;
+          } else {
+            const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
+            let remainderLength: number = 0;
+            if (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus === 1 || baseCase.numOfMatchedModulus % (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) === 0) {
+              remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) / 1000 + 250;
+            } else {
+              remainderLength = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
+            }
+            const multipleLengthSingleUvCost: number = multipleLength > 300 ? 500 + multipleLength - 300 : 500;
+            const remainderLengthUvCost: number = remainderLength > 300 ? 500 + remainderLength - 300 : 500;
+            uvCost = multipleLengthSingleUvCost * multiple + remainderLengthUvCost;
+          }
+          printingCost += uvCost;
+        }
+        if (CalculationUtil.getProductionProcessSuboptionByName("Gold stamping", options)) {
+          let goldStampingCost: number = 0;
+          if (baseCase.numOfStyles <= baseCase.numOfMatchedModulus) {
+            goldStampingCost = printingLength > 300 ? 900 + 1.5 * (printingLength - 300) : 900;
+          } else {
+            const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
+            let remainderLength: number = 0;
+            if (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus === 1 || baseCase.numOfMatchedModulus % (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) === 0) {
+              remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) / 1000 + 250;
+            } else {
+              remainderLength = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
+            }
+            const multipleLengthSingleGoldStampingCost: number = multipleLength > 300 ? 900 + 1.5 * (multipleLength - 300) : 900;
+            const remainderLengthGoldStampingCost: number = remainderLength > 300 ? 900 + 1.5 * (remainderLength - 300) : 900;
+            goldStampingCost = multipleLengthSingleGoldStampingCost * multiple + remainderLengthGoldStampingCost;
+          }
+          printingCost += goldStampingCost;
+        }
       }
       console.log("printingLength: ", printingLength);
       console.log("printingCost: ", printingCost);
@@ -648,7 +709,7 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
       const zipperTypeOption: CategoryOption | undefined = options.filter((option: CategoryOption) => option.name.toLowerCase() === "zipper type")[0];
       const zipperTypeName: string = ((zipperTypeOption as CategoryOption<false>)?.suboptions.map((suboption: CategorySuboption) => suboption.name)[0] || "No Zipper").toLowerCase();
       let edgeWidth: number = 100;
-      if (baseCase.numOfStyles <= numOfMatchedModulus) {
+      if (baseCase.numOfStyles <= baseCase.numOfMatchedModulus) {
         if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
           if (customShaped) {
             bagMakingCost = printingLength > 1000 ? 0.45 * printingLength : 450;
@@ -663,19 +724,19 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           }
         }
         if (width < edgeWidth) {
-          if (numOfMatchedModulus % baseCase.numOfStyles === 0) {
+          if (baseCase.numOfMatchedModulus % baseCase.numOfStyles === 0) {
             bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.totalQuantity);
           } else {
-            bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.quantityPerStyle * numOfMatchedModulus);
+            bagMakingCost = Math.max(bagMakingCost, 0.02 * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus);
           }
         }
       } else {
-        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+        const multipleLength: number = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
         let remainderLength: number = 0;
-        if (baseCase.numOfStyles - multiple * numOfMatchedModulus === 1 || numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
-          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus) / 1000 + 250;
+        if (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus === 1 || baseCase.numOfMatchedModulus % (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) === 0) {
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) / 1000 + 250;
         } else {
-          remainderLength = (width + 10) * baseCase.quantityPerStyle * numOfMatchedModulus / 1000 + 250;
+          remainderLength = (width + 10) * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus / 1000 + 250;
         }
         let multipleLengthSinglePrintingCost: number = 0;
         if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
@@ -692,7 +753,7 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           }
         }
         if (width < edgeWidth) {
-          multipleLengthSinglePrintingCost = Math.max(multipleLengthSinglePrintingCost, 0.02 * baseCase.quantityPerStyle * numOfMatchedModulus);
+          multipleLengthSinglePrintingCost = Math.max(multipleLengthSinglePrintingCost, 0.02 * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus);
         }
         let remainderLengthPrintingCost: number = 0;
         if (["no zipper", "normal zipper"].includes(zipperTypeName)) {
@@ -709,10 +770,10 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
           }
         }
         if (width < edgeWidth) {
-          if (numOfMatchedModulus % (baseCase.numOfStyles - multiple * numOfMatchedModulus) === 0) {
-            remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * numOfMatchedModulus));
+          if (baseCase.numOfMatchedModulus % (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus) === 0) {
+            remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.quantityPerStyle * (baseCase.numOfStyles - multiple * baseCase.numOfMatchedModulus));
           } else {
-            remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.quantityPerStyle * numOfMatchedModulus);
+            remainderLengthPrintingCost = Math.max(remainderLengthPrintingCost, 0.02 * baseCase.quantityPerStyle * baseCase.numOfMatchedModulus);
           }
         }
         bagMakingCost = multipleLengthSinglePrintingCost * multiple+ remainderLengthPrintingCost;
@@ -766,8 +827,8 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
         laborCost: laborCost,
         fileProcessingFee: fileProcessingFee,
         offsetPrinting: {
-          numOfMatchedModulus: `${ numOfMatchedModulus }`,
-          matchedPerimeter: `${ matchedPerimeter }`,
+          numOfMatchedModulus: `${ baseCase.numOfMatchedModulus }`,
+          matchedPerimeter: `${ baseCase.matchedPerimeter }`,
           multiple: `${ multiple }`,
           numOfSKUs4Printing: `${ numOfSKUs4Printing }`,
           printingWidth: `${ printingWidth }`,
@@ -875,7 +936,13 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
           }
         }
       }
-      const printingCost: number = Math.max(materialArea * totalUnitPricePerSquareMeter, 500);
+      let printingCost: number = Math.max(materialArea * totalUnitPricePerSquareMeter, 500);
+      if (
+        ["3 side seal bag", "stand-up bag", "4 side seal bag", "flat bottoom bag"].includes(categoryProductSubcategory.name.toLowerCase())
+        && CalculationUtil.getProductionProcessSuboptionByName("Inner printing", options)
+      ) {
+        printingCost *= 2;
+      }
       let printingCostSide: number = 0;
       if (isSelectedFlatBottomBag) {
         printingCostSide = Math.max(materialAreaSide * totalUnitPricePerSquareMeter, 500);
