@@ -668,9 +668,6 @@ export default function Home() {
 					suboptions: []
 				};
 			}
-			for (const selectedOption of Object.values(selectedOptionRecords)) {
-				selectedOption.suboptions = [];
-			}
 			if (valselectedSuboptionIds && valselectedSuboptionIds.length > 0) {
 				const suboptions: CategorySuboption[] = [];
 				for (const selectedSuboptionId of valselectedSuboptionIds) {
@@ -1102,6 +1099,13 @@ export default function Home() {
 		const selectedPrintingTypes: CategoryPrintingType | undefined = printingTypes.find(({id}) => id === selectedPrintingTypeId);
 		if (selectedPrintingTypes) {
 			switch (selectedPrintingTypes.name.toLowerCase()) {
+				case "digital printing":
+					return {
+						max: {
+							value: 600,
+							message: "Width cannot be greater than 600."
+						}
+					};
 				case "offset printing":
 					return {
 						max: {
@@ -1125,6 +1129,13 @@ export default function Home() {
 		const selectedPrintingTypes: CategoryPrintingType | undefined = printingTypes.find(({id}) => id === selectedPrintingTypeId);
 		if (selectedPrintingTypes) {
 			switch (selectedPrintingTypes.name.toLowerCase()) {
+				case "digital printing":
+					return {
+						max: {
+							value: 370,
+							message: "Height cannot be greater than 370."
+						}
+					};
 				case "offset printing":
 					return {
 						max: {

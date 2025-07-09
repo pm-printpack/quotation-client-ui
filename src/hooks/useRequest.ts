@@ -37,6 +37,7 @@ async function request<RequestDataType = any, ResponseDataType = Record<string, 
       data: responseData.data
     };
   } catch (error) {
+    console.error(error);
     let newError: Error;
     if (isAxiosError(error)) {
       if (error.response) {

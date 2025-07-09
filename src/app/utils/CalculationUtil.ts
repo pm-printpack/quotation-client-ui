@@ -110,7 +110,7 @@ export default {
         const d1: (PrintingLengthCandidate & {integer: number})[] = printingLengthCandidates
           .map((candidate) => ({...candidate, integer: Math.floor(sku / candidate.numOfMatchedModulus)}))
           .sort((a: {integer: number}, b: {integer: number}) => a.integer - b.integer);
-        if (d1[0].integer !== d1[1].integer) {
+        if (d1.length === 1 || d1[0].integer !== d1[1].integer) {
           const {numOfMatchedModulus, matchedPerimeter} = d1[0];
           return {
             numOfMatchedModulus: numOfMatchedModulus,
