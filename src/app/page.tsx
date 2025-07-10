@@ -157,7 +157,6 @@ export default function Home() {
 	const [productSubcategoryMenuOpen, setProductSubcategoryMenuOpen] =
 		useState<boolean>(false);
 	const [suggestedSKUs, isSuggestedSKUs] = useState<boolean[]>([]);
-	const [numOfMatchedModulus, setNumOfMatchedModulus] = useState<number>();
   const [formattedSelectedOptions, setFormattedSelectedOptions] = useState<CategoryOption[]>([]);
 	const {
 		control,
@@ -346,7 +345,6 @@ export default function Home() {
 					const materialItem: CategoryMaterialItem | undefined = materialItems[j];
 					hasSuboptions = !!(materialItem && materialItem.suboptions.length > 0);
 				}
-				// if (hasSuboptions && !selectedOptionRecords[option.id]) {
 				if (hasSuboptions) {
 					const selectedMaterialOption: CategoryOption<true> | undefined = selectedOptions.find(({id}) => option.id === id) as (CategoryOption<true> | undefined);
 					if (!selectedMaterialOption?.suboptions?.length) {
@@ -430,7 +428,6 @@ export default function Home() {
 							);
 						}
 					}
-					// setNumOfMatchedModulus(numOfMatchedModulus);
 					isSuggestedSKUs(suggests);
 					dispatch(
 						calculateTotalPriceByOffsetPrinting({
@@ -440,8 +437,6 @@ export default function Home() {
 							height: values.height,
 							gusset: hasGusset ? values.gusset : undefined,
 							cases: values.cases,
-							// numOfMatchedModulus: numOfMatchedModulus,
-							// matchedPerimeter: matchedPerimeter,
 							options: formattedSelectedOptions
 						})
 					);
@@ -677,6 +672,8 @@ export default function Home() {
 					}
 				}
 				selectedOptionRecords[option.id].suboptions = suboptions;
+			} else {
+				delete selectedOptionRecords[option.id];
 			}
 			setSelectedOptionRecords({ ...selectedOptionRecords });
 			if (!isMobile) {
@@ -985,7 +982,7 @@ export default function Home() {
 						w="full"
 						variant="outline"
 						key={`category-option-${option.id}`}
-						value={getSelectedValueOfNonMaterialItem(option)[0]}
+						value={getSelectedValueOfNonMaterialItem(option)[0] || null}
 						onValueChange={setSelectedValueOfNonMaterialItem(option)}
 					>
 						<SimpleGrid
@@ -1531,7 +1528,7 @@ export default function Home() {
 												(
 													<FieldErrorText>
 														The optimal SKU count for the current size is a
-														multiple of {numOfMatchedModulus}. Consider increasing
+														multiple of {formValues?.cases[index].numOfMatchedModulus}. Consider increasing
 														or decreasing the SKU count for better efficiency.
 													</FieldErrorText>
 												)
@@ -1869,8 +1866,8 @@ export default function Home() {
 											) : (
 												<DataListItem key={`option-${option.id}`}>
 													<DataListItemLabel>{option.name}</DataListItemLabel>
-													<DataListItemValue justifyContent="flex-end">
-														{(option as CategoryOption<false>).suboptions[0].name}
+													<DataListItemValue justifyContent="flex-end" textAlign="right">
+														{(option as CategoryOption<false>).suboptions.map(({name}) => name).join(", ")}
 													</DataListItemValue>
 												</DataListItem>
 											)
