@@ -691,6 +691,9 @@ export default function Home() {
 
 	const onSelectedPrintingTypeChange = useCallback(({ value }: { value: string }) => {
 		setSelectedPrintingTypeId(Number(value));
+	}, []);
+
+	useEffect(() => {
 		if (selectedPrintingType && selectedPrintingType.name.toLowerCase() === "gravure printing") {
 			caseFields.forEach((field: BaseCaseFormValues, index: number) => {
 				setValue(`cases.${index}.numOfStyles`, 1);
