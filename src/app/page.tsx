@@ -132,6 +132,9 @@ export default function Home() {
 	const options: CategoryOption[] = useAppSelector(
 		(state: RootState) => state.categories.options
 	);
+	const plateFees: number[] = useAppSelector(
+		(state: RootState) => state.calculation.plateFees
+	);
 	const totalPrices: number[] = useAppSelector(
 		(state: RootState) => state.calculation.totalPrices
 	);
@@ -688,7 +691,12 @@ export default function Home() {
 
 	const onSelectedPrintingTypeChange = useCallback(({ value }: { value: string }) => {
 		setSelectedPrintingTypeId(Number(value));
-	}, []);
+		if (selectedPrintingType && selectedPrintingType.name.toLowerCase() === "gravure printing") {
+			caseFields.forEach((field: BaseCaseFormValues, index: number) => {
+				setValue(`cases.${index}.numOfStyles`, 1);
+			});
+		}
+	}, [selectedPrintingType, caseFields]);
 
 	const clearSelectedMaterialSuboption = useCallback(
 		(
@@ -1050,8 +1058,32 @@ export default function Home() {
 							{caseItem.totalQuantity}
 						</DataListItemValue>
 					</DataListItem>
+					{
+						(selectedPrintingType && selectedPrintingType.name.toLowerCase() === "gravure printing")
+						?
+						<DataListItem>
+							<DataListItemLabel>Plate Fee</DataListItemLabel>
+							<DataListItemValue justifyContent="flex-end">
+								{plateFees[index]
+									? exchangeRate
+										? new Intl.NumberFormat("en-US", {
+												style: "currency",
+												currency: "USD"
+											}).format(plateFees[index] / exchangeRate)
+										: new Intl.NumberFormat("zh-CN", {
+												style: "currency",
+												currency: "CNY"
+											}).format(plateFees[index])
+									: "-"}
+							</DataListItemValue>
+						</DataListItem>
+						:
+						null
+					}
 					<DataListItem>
-						<DataListItemLabel>Product Quotation</DataListItemLabel>
+						<DataListItemLabel>
+							Product Quotation{(selectedPrintingType && selectedPrintingType.name.toLowerCase() === "gravure printing") ? "(includes Plate Fee)" : ""}
+						</DataListItemLabel>
 						<DataListItemValue justifyContent="flex-end">
 							{totalPrices[index]
 								? exchangeRate
@@ -1499,6 +1531,7 @@ export default function Home() {
 														min={1}
 														bg="bg.panel"
 														w={{ base: "full", md: "auto" }}
+														disabled={printingTypes.find(({id}) => id === selectedPrintingTypeId)?.name.toLowerCase() === "gravure printing"}
 														clampValueOnBlur={true}
 														name={field.name}
 														value={`${field.value}`}

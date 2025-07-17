@@ -201,12 +201,14 @@ interface NewQuotationHistory {
 
 interface CalculationState {
   loading: boolean;
+  plateFees: number[];
   totalPrices: number[];
   totalWeights: number[];
 }
 
 const initialState: CalculationState = {
   loading: false,
+  plateFees: [],
   totalPrices: [0],
   totalWeights: [0]
 };
@@ -260,9 +262,9 @@ function calculateProfitMargin(originalPrice: number, printingTypeName: string, 
   }
 }
 
-export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(
+export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotationHistory[], TotalPriceCalculationParams>(
   "calculation/calculateTotalPriceByDigitalPrinting",
-  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+  async (params: TotalPriceCalculationParams, {getState}): Promise<NewQuotationHistory[]> => {
     const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, options } = params;
       if (!width || !height) {
         return [];
@@ -521,13 +523,13 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<number[], T
         });
       }
       await post<NewQuotationHistory[]>(`/quotation-histories/${user.id}`, newQuotationHistories);
-      return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
+      return newQuotationHistories;
   }
 );
 
-export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(
+export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<NewQuotationHistory[], TotalPriceCalculationParams>(
   "calculation/calculateTotalPriceByOffsetPrinting",
-  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+  async (params: TotalPriceCalculationParams, {getState}): Promise<NewQuotationHistory[]> => {
     const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, options } = params;
     if (!width || !height) {
       return [];
@@ -838,13 +840,13 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<number[], To
       });
     }
     await post<NewQuotationHistory[]>(`/quotation-histories/${user.id}`, newQuotationHistories);
-    return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
+    return newQuotationHistories;
   }
 );
 
-export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], TotalPriceCalculationParams>(
+export const calculateTotalPriceByGravurePrinting = createAsyncThunk<NewQuotationHistory[], TotalPriceCalculationParams>(
   "calculation/calculateTotalPriceByGravurePrinting",
-  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+  async (params: TotalPriceCalculationParams, {getState}): Promise<NewQuotationHistory[]> => {
     const { categoryProductSubcategoryId, categoryPrintingTypeId, width, height, gusset, cases, options } = params;
     if (!width || !height) {
       return [];
@@ -1107,7 +1109,7 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<number[], T
       });
     }
     await post<NewQuotationHistory[]>(`/quotation-histories/${user.id}`, newQuotationHistories);
-    return newQuotationHistories.map(({totalPriceInCNY}) => totalPriceInCNY);
+    return newQuotationHistories;
   }
 );
 
@@ -1172,8 +1174,9 @@ export const calculationSlice = createSlice({
   },
   extraReducers: (builder: ActionReducerMapBuilder<CalculationState>) => {
     [calculateTotalPriceByDigitalPrinting, calculateTotalPriceByOffsetPrinting, calculateTotalPriceByGravurePrinting].forEach((asyncThunk) => {
-      builder.addCase(asyncThunk.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
-        state.totalPrices = action.payload;
+      builder.addCase(asyncThunk.fulfilled, (state: CalculationState, action: PayloadAction<NewQuotationHistory[]>) => {
+        state.totalPrices = action.payload.map(({totalPriceInCNY}) => totalPriceInCNY);
+        state.plateFees = action.payload.filter(({gravurePrinting}) => !!gravurePrinting).map(({gravurePrinting}) => Number(gravurePrinting?.plateFee) || 0);
       });
       builder.addCase(asyncThunk.rejected, (state: CalculationState, action: PayloadAction<unknown, string, unknown, SerializedError>) => {
         console.error("calculation slice error: ", action.error);
