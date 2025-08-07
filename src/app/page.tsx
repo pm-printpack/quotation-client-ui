@@ -1106,13 +1106,13 @@ export default function Home() {
 						shippingCost[index].totalWeight > 500
 						?
 						<DataListItem alignItems="flex-start">
-							<DataListItemLabel>Estimated Shipping cost</DataListItemLabel>
+							<DataListItemLabel>Estimated Shipping Cost</DataListItemLabel>
 							<DataListItemValue justifyContent="flex-end">If you need to palletize, please contact the business for a separate quotation.</DataListItemValue>
 						</DataListItem>
 						:
 						<>
 							<DataListItem alignItems="flex-start">
-								<DataListItemLabel>Estimated Sea freight cost</DataListItemLabel>
+								<DataListItemLabel>Estimated Sea Freight Cost</DataListItemLabel>
 								<DataListItemValue justifyContent="flex-end">
 									{
 										exchangeRate
@@ -1124,7 +1124,7 @@ export default function Home() {
 								</DataListItemValue>
 							</DataListItem>
 							<DataListItem alignItems="flex-start">
-								<DataListItemLabel>Estimated Air freight cost</DataListItemLabel>
+								<DataListItemLabel>Estimated Air Freight Cost</DataListItemLabel>
 								<DataListItemValue justifyContent="flex-end">
 									{
 										exchangeRate
@@ -1901,7 +1901,7 @@ export default function Home() {
 																		<DataListItem
 																			key={`option-${option.id}-materialsuboption-${materialItem.id}-suboption-${suboption.id}`}
 																		>
-																			<DataListItemLabel>{`${option.name}${
+																			<DataListItemLabel textTransform="capitalize">{`${option.name}${
 																				option.suboptions.length > 1
 																					? ` ${index + 1}`
 																					: ""
