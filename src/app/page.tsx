@@ -25,19 +25,7 @@ import {
 	Box,
 	Button,
 	Center,
-	Checkbox,
-	CheckboxCardContent,
-	CheckboxCardControl,
-	CheckboxCardDescription,
-	CheckboxCardHiddenInput,
-	CheckboxCardIndicator,
-	CheckboxCardLabel,
-	CheckboxCardRoot,
-	CheckboxControl,
 	CheckboxGroup,
-	CheckboxHiddenInput,
-	CheckboxLabel,
-	CheckboxRoot,
 	ClipboardCopyText,
 	ClipboardIndicator,
 	ClipboardRoot,
@@ -58,7 +46,6 @@ import {
 	FieldLabel,
 	FieldRoot,
 	Flex,
-	For,
 	Heading,
 	HStack,
 	IconButton,
@@ -93,12 +80,13 @@ import {
 	calculateTotalPriceByDigitalPrinting,
 	calculateTotalPriceByGravurePrinting,
 	calculateTotalPriceByOffsetPrinting,
-	calculateTotalWeight,
+	calculateShippingCost,
+	ShippingCost,
 	Size
 } from "@/lib/features/calculation.slice";
 import CalculationUtil from "./utils/CalculationUtil";
 import { useDebouncedCallback } from "use-debounce";
-import { fetchExchangeRate } from "@/lib/features/environment.slice";
+import { fetchExchangeRate, fetchShippings } from "@/lib/features/environment.slice";
 import { CheckboxCard } from "@/components/ui/checkbox-card";
 
 type BaseCaseFormValues = BaseCaseValue;
@@ -138,8 +126,8 @@ export default function Home() {
 	const totalPrices: number[] = useAppSelector(
 		(state: RootState) => state.calculation.totalPrices
 	);
-	const totalWeights: number[] = useAppSelector(
-		(state: RootState) => state.calculation.totalWeights
+	const shippingCost: ShippingCost[] = useAppSelector(
+		(state: RootState) => state.calculation.shippingCost
 	);
 	const exchangeRate: number | undefined = useAppSelector(
 		(state: RootState) => state.env.exchangeRate?.rate
@@ -195,6 +183,7 @@ export default function Home() {
 
 	useEffect(() => {
 		dispatch(fetchExchangeRate());
+		dispatch(fetchShippings());
 		dispatch(fetchAllProductSubcategories());
 	}, [dispatch]);
 
@@ -459,7 +448,7 @@ export default function Home() {
 					);
 				}
 				dispatch(
-					calculateTotalWeight({
+					calculateShippingCost({
 						categoryProductSubcategoryId: selectedProductSubcategoryId,
 						categoryPrintingTypeId: selectedPrintingTypeId,
 						width: values.width,
@@ -1104,27 +1093,54 @@ export default function Home() {
 					<DataListItem>
 						<DataListItemLabel>Estimated Weight</DataListItemLabel>
 						<DataListItemValue justifyContent="flex-end">
-							{totalWeights[index]
+							{shippingCost[index].totalWeight
 								? new Intl.NumberFormat("en-US", {
 										style: "unit",
 										unit: "kilogram",
 										unitDisplay: "short"
-								  }).format(totalWeights[index])
+								  }).format(shippingCost[index].totalWeight)
 								: "-"}
 						</DataListItemValue>
 					</DataListItem>
-					<DataListItem alignItems="flex-start">
-						<DataListItemLabel>Estimated Delivery Time</DataListItemLabel>
-						<DataListItemValue justifyContent="flex-end">
-							Air Freight: 10–15 days
-							<br />
-							Sea Freight: 18–22 days
-						</DataListItemValue>
-					</DataListItem>
+					{
+						shippingCost[index].totalWeight > 500
+						?
+						<DataListItem alignItems="flex-start">
+							<DataListItemLabel>Estimated Shipping cost</DataListItemLabel>
+							<DataListItemValue justifyContent="flex-end">If you need to palletize, please contact the business for a separate quotation.</DataListItemValue>
+						</DataListItem>
+						:
+						<>
+							<DataListItem alignItems="flex-start">
+								<DataListItemLabel>Estimated Sea freight cost</DataListItemLabel>
+								<DataListItemValue justifyContent="flex-end">
+									{
+										exchangeRate
+										?
+										new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format((shippingCost[index].seaFreightCost + 500) / exchangeRate)
+										:
+										new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY"}).format((shippingCost[index].seaFreightCost + 500))
+									}
+								</DataListItemValue>
+							</DataListItem>
+							<DataListItem alignItems="flex-start">
+								<DataListItemLabel>Estimated Air freight cost</DataListItemLabel>
+								<DataListItemValue justifyContent="flex-end">
+									{
+										exchangeRate
+										?
+										new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format((shippingCost[index].airFreightCost + 500) / exchangeRate)
+										:
+										new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY"}).format((shippingCost[index].airFreightCost + 500))
+									}
+								</DataListItemValue>
+							</DataListItem>
+						</>
+					}
 				</DataListRoot>
 			);
 		},
-		[formValues, selectedOptionRecords, totalWeights, totalPrices, exchangeRate]
+		[formValues, selectedOptionRecords, shippingCost, totalPrices, exchangeRate]
 	);
 
 	const getWidthRules = useCallback(() => {

@@ -9,14 +9,26 @@ export type ExhangeRate = {
   baseCurrencyCode: string;
 }
 
+export enum ShippingType {
+  OCEAN = "ocean",
+  AIR = "air"
+}
+
+export type Shipping = {
+  unitPrice: number;
+  type: ShippingType
+};
+
 interface EnvironmentState {
   loading: boolean;
   exchangeRate?: ExhangeRate;
+  shippings: Shipping[];
 }
 
 const initialState: EnvironmentState = {
   loading: false,
-  exchangeRate: undefined
+  exchangeRate: undefined,
+  shippings: []
 };
 
 export const fetchExchangeRate = createAsyncThunk<ExhangeRate, void>(
@@ -32,13 +44,26 @@ export const fetchExchangeRate = createAsyncThunk<ExhangeRate, void>(
   }
 );
 
+export const fetchShippings = createAsyncThunk<Shipping[], void>(
+  "environment/fetchShippings",
+  async (): Promise<Shipping[]> => {
+    const {error, data} = await get<{}, Shipping[]>(`/shippings`);
+    if (error) {
+      throw error;
+    } else if (!data) {
+      throw new Error("You haven't set the shipping information yet!");
+    }
+    return data;
+  }
+);
+
 export const environmentSlice = createSlice({
   name: "environment",
   initialState: initialState,
   reducers: {
   },
   extraReducers: (builder: ActionReducerMapBuilder<EnvironmentState>) => {
-    [fetchExchangeRate].forEach((asyncThunk) => {
+    [fetchExchangeRate, fetchShippings].forEach((asyncThunk) => {
       builder.addCase(asyncThunk.pending, (state: EnvironmentState) => {
         state.loading = true;
       });
@@ -49,6 +74,10 @@ export const environmentSlice = createSlice({
     });
     builder.addCase(fetchExchangeRate.fulfilled, (state: EnvironmentState, action: PayloadAction<ExhangeRate>) => {
       state.exchangeRate = action.payload;
+      state.loading = false;
+    });
+    builder.addCase(fetchShippings.fulfilled, (state: EnvironmentState, action: PayloadAction<Shipping[]>) => {
+      state.shippings = action.payload;
       state.loading = false;
     });
   }

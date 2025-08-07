@@ -4,6 +4,7 @@ import CalculationUtil from "@/app/utils/CalculationUtil";
 import { RootState } from "../store";
 import { Customer, CustomerTier } from "./customers.slice";
 import { useRequest } from "@/hooks/useRequest";
+import { Shipping, ShippingType } from "./environment.slice";
 
 const {post} = useRequest();
 
@@ -199,18 +200,24 @@ interface NewQuotationHistory {
   gravurePrinting?: GravurePrintingQuotationHistory;
 }
 
+export interface ShippingCost {
+  totalWeight: number;
+  seaFreightCost: number;
+  airFreightCost: number;
+}
+
 interface CalculationState {
   loading: boolean;
   plateFees: number[];
   totalPrices: number[];
-  totalWeights: number[];
+  shippingCost: ShippingCost[];
 }
 
 const initialState: CalculationState = {
   loading: false,
   plateFees: [],
   totalPrices: [0],
-  totalWeights: [0]
+  shippingCost: []
 };
 
 export type BaseCaseValue = {
@@ -233,7 +240,7 @@ type TotalPriceCalculationParams = Size & {
   cases: BaseCaseValue[];
   options: CategoryOption<boolean>[];
 };
-type TotalWeightCalculationParams = TotalPriceCalculationParams;
+type TotalShippingCostCalculationParams = TotalPriceCalculationParams;
 
 function getPrintingTypeProfitMargin(printingTypeName: string, customerTier: CustomerTier): number {
   switch (printingTypeName.toLowerCase()) {
@@ -292,7 +299,7 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
           printingWidth = (height + 20) * 2 + (gusset || 0);
           printingWidthSide = ((gusset || 0) + 10) * 2;
         } else if (["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
-          printingWidth = (height + 10) * 2 + (gusset || 0) + 6 + 24;
+          printingWidth = (height + 10) * 2 + (gusset || 0) + 10;
         } else if (categoryProductSubcategory.name.toLowerCase() === "4 side seal bag") {
           printingWidth = (width + (gusset || 0) + 20) * 2;
         } else {
@@ -303,10 +310,13 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
         if (isSelectedFlatBottomBag) {
           horizontalLayoutCountSide = Math.floor(740 / printingWidthSide);
         }
-        const numOfBagsPerPrinting: number = Math.floor(1120 / (width + 5));
+        let numOfBagsPerPrinting: number = Math.floor(1120 / (width + 2));
         let numOfBagsPerPrintingSide: number = 0;
+        if ("4 side seal bag" === categoryProductSubcategory.name.toLowerCase()) {
+          numOfBagsPerPrinting = Math.floor(1120 / (height + 2));
+        }
         if (isSelectedFlatBottomBag) {
-          numOfBagsPerPrintingSide = Math.floor(1120 / (height + 5));
+          numOfBagsPerPrintingSide = Math.floor(1120 / (height + 2));
         }
         let printingQuantity: number = 0;
         let printingQuantitySide: number = 0;
@@ -367,12 +377,14 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
         let printingLength: number = 0;
         let printingLengthSide: number = 0;
         if (isSelectedFlatBottomBag || ["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
-          printingLength = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.05) + 300;
+          printingLength = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (width + 2) / 1000 * (1.1 + (baseCase.numOfStyles <= 10 ? (baseCase.numOfStyles - 1) * 0.04 : 0.36)) + (baseCase.numOfStyles === 1 ? 200 : 300);
+        } else if ("4 side seal bag" === categoryProductSubcategory.name.toLowerCase()) {
+          printingLength = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (height + 2) / 1000 * (1.1 + (baseCase.numOfStyles <= 10 ? (baseCase.numOfStyles - 1) * 0.04 : 0.36)) + (baseCase.numOfStyles === 1 ? 200 : 300);
         } else {
           printingLength = baseCase.totalQuantity / horizontalLayoutCount * (width + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.5) + 50;
         }
         if (isSelectedFlatBottomBag) {
-          printingLengthSide = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (height + 5) / 1000 * (1.1 + (baseCase.numOfStyles - 1) * 0.05) + 300;
+          printingLengthSide = (baseCase.totalQuantity + 100 * baseCase.numOfStyles) / horizontalLayoutCount * (height + 2) / 1000 * (1.1 + (baseCase.numOfStyles <= 10 ? (baseCase.numOfStyles - 1) * 0.04 : 0.36)) + (baseCase.numOfStyles === 1 ? 200 : 300);
         }
         
         const materialArea: number = printingLength * 760 / 1000;
@@ -1113,16 +1125,23 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<NewQuotatio
   }
 );
 
-export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalculationParams>(
-  "calculation/calculateTotalWeight",
-  async (params: TotalPriceCalculationParams, {getState}): Promise<number[]> => {
+export const calculateShippingCost = createAsyncThunk<ShippingCost[], TotalShippingCostCalculationParams>(
+  "calculation/calculateTotalShippingCost",
+  async (params: TotalShippingCostCalculationParams, {getState}): Promise<ShippingCost[]> => {
     const { categoryProductSubcategoryId, width, height, cases, options } = params;
     if (!width || !height) {
-      return cases.map(() => 0);
+      return cases.map(() => ({
+        totalWeight: 0,
+        seaFreightCost: 0,
+        airFreightCost: 0
+      }));
     }
     const productSubcategories: CategoryProductSubcategory[] = (getState() as RootState).categories.productSubcategories;
     const selectedProductSubcategory: CategoryProductSubcategory | undefined = productSubcategories.filter((productSubcategory: CategoryProductSubcategory) => productSubcategory.id === categoryProductSubcategoryId)[0];
     if (selectedProductSubcategory) {
+      const shippings: Shipping[] = (getState() as RootState).env.shippings;
+      const seaFreightUnitPrice: number = shippings.find(({type}) => type === ShippingType.OCEAN)?.unitPrice || 0;
+      const airFreightUnitPrice: number = shippings.find(({type}) => type === ShippingType.AIR)?.unitPrice || 0;
       let surfaceDensity: number = 0;
       for (const option of options) {
         if (option.isMaterial) {
@@ -1161,9 +1180,32 @@ export const calculateTotalWeight = createAsyncThunk<number[], TotalWeightCalcul
             break;
         }
       }
-      return totalWeights;
+      return totalWeights.map<ShippingCost>((totalWeight: number) => {
+        if (totalWeight > 500) {
+          return {
+            totalWeight: totalWeight,
+            seaFreightCost: -1,
+            airFreightCost: -1
+          };
+        }
+        let airFreightCost: number = 0;
+        if (totalWeight < 21) {
+          airFreightCost = 60 * totalWeight + 110;
+        } else {
+          airFreightCost = airFreightUnitPrice * totalWeight + 350;
+        }
+        return {
+          totalWeight: totalWeight,
+          seaFreightCost: seaFreightUnitPrice * totalWeight + 500,
+          airFreightCost: airFreightCost
+        };
+      });
     }
-    return cases.map(() => 0);
+    return cases.map(() => ({
+        totalWeight: 0,
+        seaFreightCost: 0,
+        airFreightCost: 0
+      }));
   }
 );
 
@@ -1182,8 +1224,8 @@ export const calculationSlice = createSlice({
         console.error("calculation slice error: ", action.error);
       });
     });
-    builder.addCase(calculateTotalWeight.fulfilled, (state: CalculationState, action: PayloadAction<number[]>) => {
-      state.totalWeights = action.payload;
+    builder.addCase(calculateShippingCost.fulfilled, (state: CalculationState, action: PayloadAction<ShippingCost[]>) => {
+      state.shippingCost = action.payload;
     });
   }
 });
