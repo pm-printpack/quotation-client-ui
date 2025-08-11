@@ -1117,9 +1117,9 @@ export default function Home() {
 									{
 										exchangeRate
 										?
-										new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format((shippingCost[index].seaFreightCost + 500) / exchangeRate)
+										new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format(shippingCost[index].seaFreightCost / exchangeRate)
 										:
-										new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY"}).format((shippingCost[index].seaFreightCost + 500))
+										new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY"}).format(shippingCost[index].seaFreightCost)
 									}
 								</DataListItemValue>
 							</DataListItem>
@@ -1129,9 +1129,9 @@ export default function Home() {
 									{
 										exchangeRate
 										?
-										new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format((shippingCost[index].airFreightCost + 500) / exchangeRate)
+										new Intl.NumberFormat("en-US", {style: "currency", currency: "USD"}).format(shippingCost[index].airFreightCost / exchangeRate)
 										:
-										new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY"}).format((shippingCost[index].airFreightCost + 500))
+										new Intl.NumberFormat("zh-CN", {style: "currency", currency: "CNY"}).format(shippingCost[index].airFreightCost)
 									}
 								</DataListItemValue>
 							</DataListItem>
