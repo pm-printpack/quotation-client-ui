@@ -2,6 +2,7 @@
   width: 100%;
   height: 100%;
   background: url("https://www.popsci.com/wp-content/uploads/2024/04/26/fof-1.0-0856_inline-1.jpg?quality=85") no-repeat center/cover;
+  /* background: url("/login_bg_3.png") no-repeat center/cover; */
 }
 
 .signInCard {

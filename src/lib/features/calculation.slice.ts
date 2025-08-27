@@ -339,14 +339,16 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
               for (let j: number = 0; j < suboptions.length; ++j) {
                 const suboption: CategorySuboption = suboptions[j];
                 if (suboption.name.toLowerCase() === "uv") {
-                  printingCost = printingQuantity * 5 + 210;
+                  // printingCost = printingQuantity * 5 + 210;
+                  printingCost = printingQuantity * 8 + 600;
                   if (isSelectedFlatBottomBag) {
-                    printingCostSide = printingQuantitySide * 5 + 210;
+                    printingCostSide = printingQuantitySide * 8 + 600;
                   }
                 } else if (suboption.name.toLowerCase() === "gold stamping") {
-                  printingCost = printingQuantity * 5.8 + 230;
+                  // printingCost = printingQuantity * 5.8 + 230;
+                  printingCost = printingQuantity * 9 + 700;
                   if (isSelectedFlatBottomBag) {
-                    printingCostSide = printingQuantitySide * 5.8 + 230;
+                    printingCostSide = printingQuantitySide * 9 + 700;
                   }
                 }
               }
@@ -1178,6 +1180,10 @@ export const calculateShippingCost = createAsyncThunk<ShippingCost[], TotalShipp
               surfaceDensity / 10000 * baseCase.totalQuantity * (width * height * 2) / 100 / 1000 * 1.212 + baseCase.totalQuantity * 0.0036 + Math.ceil(baseCase.totalQuantity / 500)
             );
             break;
+        }
+        const selectedZipperSuboption: CategorySuboption | undefined = CalculationUtil.getSelectedZipperSuboption(options);
+        if (selectedZipperSuboption && selectedZipperSuboption.name.toLowerCase() === "cr zipper") {
+          totalWeights[totalWeights.length - 1] += width * baseCase.totalQuantity * 5.85 / 1000000;
         }
       }
       return totalWeights.map<ShippingCost>((totalWeight: number) => {
