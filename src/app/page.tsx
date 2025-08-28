@@ -686,6 +686,7 @@ export default function Home() {
 		if (selectedPrintingType && selectedPrintingType.name.toLowerCase() === "gravure printing") {
 			caseFields.forEach((field: BaseCaseFormValues, index: number) => {
 				setValue(`cases.${index}.numOfStyles`, 1);
+				setValue(`cases.${index}.totalQuantity`, getValues(`cases.${index}.numOfStyles`) * getValues(`cases.${index}.quantityPerStyle`));
 			});
 		}
 	}, [selectedPrintingType, caseFields]);
