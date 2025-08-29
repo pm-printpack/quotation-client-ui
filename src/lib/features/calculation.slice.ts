@@ -331,45 +331,45 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
         } 
         let printingCost: number = 0;
         let printingCostSide: number = 0;
-        if (isSelectedFlatBottomBag || ["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
-          for (let i: number = 0; i < options.length; ++i) {
-            const option: CategoryOption = options[i];
-            if (!option.isMaterial) {
-              const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-              if (suboptions.filter((suboption: CategorySuboption) => ["uv", "gold stamping"].includes(suboption.name.toLowerCase())).length === 2) {
-                printingCost = printingQuantity * 12.2 + 700;
-                if (isSelectedFlatBottomBag) {
-                  printingCostSide = printingQuantitySide * 12.2 + 700;
-                }
-              } else {
-                for (let j: number = 0; j < suboptions.length; ++j) {
-                  const suboption: CategorySuboption = suboptions[j];
-                  if (suboption.name.toLowerCase() === "uv") {
-                    // printingCost = printingQuantity * 5 + 210;
-                    printingCost = printingQuantity * 8 + 600;
-                    if (isSelectedFlatBottomBag) {
-                      printingCostSide = printingQuantitySide * 8 + 600;
-                    }
-                  } else if (suboption.name.toLowerCase() === "gold stamping") {
-                    // printingCost = printingQuantity * 5.8 + 230;
-                    printingCost = printingQuantity * 9 + 700;
-                    if (isSelectedFlatBottomBag) {
-                      printingCostSide = printingQuantitySide * 9 + 700;
-                    }
+        // if (isSelectedFlatBottomBag || ["3 side seal bag", "stand-up bag"].includes(categoryProductSubcategory.name.toLowerCase())) {
+        for (let i: number = 0; i < options.length; ++i) {
+          const option: CategoryOption = options[i];
+          if (!option.isMaterial) {
+            const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+            if (suboptions.filter((suboption: CategorySuboption) => ["uv", "gold stamping"].includes(suboption.name.toLowerCase())).length === 2) {
+              printingCost = printingQuantity * 12.2 + 700;
+              if (isSelectedFlatBottomBag) {
+                printingCostSide = printingQuantitySide * 12.2 + 700;
+              }
+            } else {
+              for (let j: number = 0; j < suboptions.length; ++j) {
+                const suboption: CategorySuboption = suboptions[j];
+                if (suboption.name.toLowerCase() === "uv") {
+                  // printingCost = printingQuantity * 5 + 210;
+                  printingCost = printingQuantity * 8 + 600;
+                  if (isSelectedFlatBottomBag) {
+                    printingCostSide = printingQuantitySide * 8 + 600;
+                  }
+                } else if (suboption.name.toLowerCase() === "gold stamping") {
+                  // printingCost = printingQuantity * 5.8 + 230;
+                  printingCost = printingQuantity * 9 + 700;
+                  if (isSelectedFlatBottomBag) {
+                    printingCostSide = printingQuantitySide * 9 + 700;
                   }
                 }
               }
             }
           }
-          if (printingCost === 0) {
-            printingCost = printingQuantity * 4.8;
-          }
-          if (isSelectedFlatBottomBag && printingCostSide === 0) {
-            printingCostSide = printingQuantitySide * 4.8;
-          }
-        } else {
-          printingCost = printingQuantity * 3.8;
         }
+        if (printingCost === 0) {
+          printingCost = printingQuantity * 4.8;
+        }
+        if (isSelectedFlatBottomBag && printingCostSide === 0) {
+          printingCostSide = printingQuantitySide * 4.8;
+        }
+        // } else {
+        //   printingCost = printingQuantity * 3.8;
+        // }
         if (
           ["3 side seal bag", "stand-up bag", "4 side seal bag", "flat bottoom bag"].includes(categoryProductSubcategory.name.toLowerCase())
           && CalculationUtil.getProductionProcessSuboptionByName("Inner printing", options)
