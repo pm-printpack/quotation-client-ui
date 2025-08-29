@@ -494,6 +494,17 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
             bagMakingCost += tinTieSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
           }
         }
+        for (let i: number = 0; i < options.length; ++i) {
+          const option: CategoryOption = options[i];
+          if (!option.isMaterial) {
+            const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+            const spoutSuboption: CategorySuboption | undefined = suboptions.find((suboption: CategorySuboption) => suboption.name.toLowerCase() === "spout");
+            if (spoutSuboption) {
+              bagMakingCost += spoutSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
+              break;
+            }
+          }
+        }
         console.log("bagMakingCost: ", bagMakingCost);
 
         // Die-Cutting Cost
