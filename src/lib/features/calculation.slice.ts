@@ -812,6 +812,17 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<NewQuotation
         }
         bagMakingCost = multipleLengthSinglePrintingCost * multiple+ remainderLengthPrintingCost;
       }
+      for (let i: number = 0; i < options.length; ++i) {
+        const option: CategoryOption = options[i];
+        if (!option.isMaterial) {
+          const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+          const spoutSuboption: CategorySuboption | undefined = suboptions.find((suboption: CategorySuboption) => suboption.name.toLowerCase() === "spout");
+          if (spoutSuboption) {
+            bagMakingCost += spoutSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
+            break;
+          }
+        }
+      }
       console.log("bagMakingCost: ", bagMakingCost);
 
       // Die-Cutting Cost
@@ -1021,6 +1032,17 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<NewQuotatio
         }
       } else {
         bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPricePerSquareMeter || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
+      }
+      for (let i: number = 0; i < options.length; ++i) {
+        const option: CategoryOption = options[i];
+        if (!option.isMaterial) {
+          const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
+          const spoutSuboption: CategorySuboption | undefined = suboptions.find((suboption: CategorySuboption) => suboption.name.toLowerCase() === "spout");
+          if (spoutSuboption) {
+            bagMakingCost += spoutSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
+            break;
+          }
+        }
       }
       bagMakingCost = Math.max(bagMakingCost, 1600);
       console.log("bagMakingCost: ", bagMakingCost);
