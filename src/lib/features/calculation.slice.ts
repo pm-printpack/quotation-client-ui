@@ -496,13 +496,15 @@ export const calculateTotalPriceByDigitalPrinting = createAsyncThunk<NewQuotatio
         }
         for (let i: number = 0; i < options.length; ++i) {
           const option: CategoryOption = options[i];
-          if (!option.isMaterial) {
-            const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-            const spoutSuboption: CategorySuboption | undefined = suboptions.find((suboption: CategorySuboption) => suboption.name.toLowerCase() === "spout");
-            if (spoutSuboption) {
-              bagMakingCost += spoutSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
-              break;
+          if (!option.isMaterial && option.name.toLowerCase() === "production process") {
+            for (let j: number = 0; j < option.suboptions.length; ++j) {
+              const suboption: CategorySuboption = (option as CategoryOption<false>).suboptions[j];
+              if (suboption.name.toLowerCase() === "spout") {
+                bagMakingCost += suboption.unitPricePerSquareMeter * baseCase.totalQuantity;
+                break;
+              }
             }
+            break;
           }
         }
         console.log("bagMakingCost: ", bagMakingCost);
@@ -814,13 +816,15 @@ export const calculateTotalPriceByOffsetPrinting = createAsyncThunk<NewQuotation
       }
       for (let i: number = 0; i < options.length; ++i) {
         const option: CategoryOption = options[i];
-        if (!option.isMaterial) {
-          const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-          const spoutSuboption: CategorySuboption | undefined = suboptions.find((suboption: CategorySuboption) => suboption.name.toLowerCase() === "spout");
-          if (spoutSuboption) {
-            bagMakingCost += spoutSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
-            break;
+        if (!option.isMaterial && option.name.toLowerCase() === "production process") {
+          for (let j: number = 0; j < option.suboptions.length; ++j) {
+            const suboption: CategorySuboption = (option as CategoryOption<false>).suboptions[j];
+            if (suboption.name.toLowerCase() === "spout") {
+              bagMakingCost += suboption.unitPricePerSquareMeter * baseCase.totalQuantity;
+              break;
+            }
           }
+          break;
         }
       }
       console.log("bagMakingCost: ", bagMakingCost);
@@ -1032,17 +1036,6 @@ export const calculateTotalPriceByGravurePrinting = createAsyncThunk<NewQuotatio
         }
       } else {
         bagMakingCost = 0.2 * materialArea + (selectedZipperSuboption?.unitPricePerSquareMeter || 0) * printingLengthPerPackage * baseCase.totalQuantity / 1000 + baseCase.totalQuantity * totalProductionProcessUnitPricePerSquareMeter;
-      }
-      for (let i: number = 0; i < options.length; ++i) {
-        const option: CategoryOption = options[i];
-        if (!option.isMaterial) {
-          const suboptions: CategorySuboption[] = (option as CategoryOption<false>).suboptions;
-          const spoutSuboption: CategorySuboption | undefined = suboptions.find((suboption: CategorySuboption) => suboption.name.toLowerCase() === "spout");
-          if (spoutSuboption) {
-            bagMakingCost += spoutSuboption.unitPricePerSquareMeter * baseCase.totalQuantity;
-            break;
-          }
-        }
       }
       bagMakingCost = Math.max(bagMakingCost, 1600);
       console.log("bagMakingCost: ", bagMakingCost);
